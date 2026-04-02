@@ -169,10 +169,10 @@
             let classe = "bg-verde";
             let statusTexto = item["CRÍTICIDADE ATUAL"] || "OK";
 
-            if(item["CRÍTICIDADE ATUAL"] === "CRÍTICO" || perc < 94) {
+            if(item["CRÍTICIDADE ATUAL"] === "CRÍTICO" || perc < 96,1) {
                 classe = "bg-vermelho";
                 statusTexto = "CRÍTICO";
-            } else if(perc >= 94 && perc < 96) {
+            } else if(perc >= 96,1 && perc < 98) {
                 classe = "bg-amarelo";
                 statusTexto = "ALERTA";
             }
