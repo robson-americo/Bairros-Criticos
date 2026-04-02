@@ -10,13 +10,15 @@
         .summary { display: flex; gap: 15px; margin-bottom: 25px; }
         .card { flex: 1; padding: 15px; border-radius: 8px; text-align: center; color: white; font-weight: bold; }
         .card-total { background: #34495e; }
+        /* Ajuste do Card Crítico */
         .card-critico { background: #e74c3c; font-size: 16px; }
-        .card span.contador { display: block; font-size: 32px; margin-top: 5px; }
+        .card-critico span.mes-label { display: inline; text-transform: uppercase; }
+        .card-critico span.contador { display: block; font-size: 32px; margin-top: 5px; }
         
         table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-        th { background: #ecf0f1; padding: 12px; text-align: left; border-bottom: 2px solid #bdc3c7; font-size: 13px; }
-        td { padding: 10px; border-bottom: 1px solid #eee; font-size: 14px; }
-        .status-badge { padding: 6px 12px; border-radius: 20px; font-size: 11px; color: white; font-weight: bold; display: inline-block; }
+        th { background: #ecf0f1; padding: 12px; text-align: left; border-bottom: 2px solid #bdc3c7; }
+        td { padding: 10px; border-bottom: 1px solid #eee; }
+        .status-badge { padding: 6px 12px; border-radius: 20px; font-size: 11px; color: white; font-weight: bold; display: inline-block; text-align: center; }
         .bg-vermelho { background-color: #d93025; }
         .bg-verde { background-color: #1e8e3e; }
     </style>
@@ -24,16 +26,13 @@
 <body>
 
 <div class="container">
-    <h2>Análise de Bairros Críticos (Trimestre Móvel)</h2>
+    <h2>Análise de Bairros Críticos</h2>
 
     <div class="summary">
-        <div class="card card-total">
-            Total Sites Críticos (3 Meses)
-            <span class="contador" id="countTotal">0</span>
-        </div>
+        <div class="card card-total">Total Sites Listados<span style="display:block; font-size:32px;" id="countTotal">0</span></div>
         
         <div class="card card-critico">
-            <span id="labelMesCard">MÊS</span> <= 96%
+            <span id="labelMesCard" class="mes-label">MÊS</span> <= 96%
             <span id="countCritico" class="contador">0</span>
         </div>
     </div>
@@ -54,94 +53,73 @@
 
 <script>
     const urlBase = "https://docs.google.com/spreadsheets/d/1p7Q7vdCMvzWZNXlsemZ2BocFoAcji6LnHuI0yAP8jlw/export?format=csv&gid=669721322";
-    
-    let mes0 = ""; // Atual
-    let mes1 = ""; // Anterior
-    let mes2 = ""; // Retrasado
+    let mesAtualNome = "";
 
-    function definirMeses() {
-        const nomes = ["JANEIRO", "FEVEREIRO", "MARÇO", "ABRIL", "MAIO", "JUNHO", "JULHO", "AGOSTO", "SETEMBRO", "OUTUBRO", "NOVEMBRO", "DEZEMBRO"];
-        const hoje = new Date();
-        
-        mes0 = nomes[hoje.getMonth()];
-        mes1 = nomes[(hoje.getMonth() - 1 + 12) % 12];
-        mes2 = nomes[(hoje.getMonth() - 2 + 12) % 12];
+    function definirMesEIniciar() {
+        const meses = ["JANEIRO", "FEVEREIRO", "MARÇO", "ABRIL", "MAIO", "JUNHO", "JULHO", "AGOSTO", "SETEMBRO", "OUTUBRO", "NOVEMBRO", "DEZEMBRO"];
+        const dataHoje = new Date();
+        mesAtualNome = meses[dataHoje.getMonth()];
 
-        document.getElementById('labelMesCard').innerText = mes0;
-        document.getElementById('labelMesTabela').innerText = "% " + mes0;
+        // Atualiza os textos dos Cards e Tabela
+        document.getElementById('labelMesCard').innerText = mesAtualNome;
+        document.getElementById('labelMesTabela').innerText = "% " + mesAtualNome;
+
+        carregarDados();
     }
 
-    function converterValor(valor) {
-        if (!valor) return 100;
-        return parseFloat(valor.toString().replace(',', '.').replace('%', '')) || 0;
-    }
-
-    function init() {
-        definirMeses();
+    function carregarDados() {
         Papa.parse(urlBase, {
             download: true,
             header: true,
             skipEmptyLines: true,
             complete: function(res) {
-                processarDados(res.data);
+                renderizar(res.data);
             }
         });
     }
 
-    function processarDados(dados) {
+    function renderizar(dados) {
         const corpo = document.getElementById('tabelaBody');
         corpo.innerHTML = '';
-        
-        let totalSitesCriticosTrimestre = 0;
-        let totalSitesCriticosMesAtual = 0;
+        let contCritico = 0;
 
         dados.forEach(row => {
-            if (!row.SITE) return;
-
+            // Normaliza as chaves para facilitar a busca
             const colunas = Object.keys(row);
             
-            // Busca as colunas dos 3 meses
-            const colMes0 = colunas.find(k => k.toUpperCase().includes(mes0));
-            const colMes1 = colunas.find(k => k.toUpperCase().includes(mes1));
-            const colMes2 = colunas.find(k => k.toUpperCase().includes(mes2));
-
-            const v0 = converterValor(row[colMes0]);
-            const v1 = converterValor(row[colMes1]);
-            const v2 = converterValor(row[colMes2]);
-
-            // REGRA: O site entra na lista se for <= 96 em QUALQUER um dos 3 meses
-            const eCriticoNoTrimestre = (v0 <= 96.1 && v0 > 0) || (v1 <= 96.1 && v1 > 0) || (v2 <= 96.1 && v2 > 0);
+            // BUSCA AUTOMÁTICA: Procura qualquer coluna que tenha o nome do mês (ex: "ABRIL" ou "% ABRIL")
+            const chaveMes = colunas.find(k => k.toUpperCase().includes(mesAtualNome));
             
-            if (eCriticoNoTrimestre) {
-                totalSitesCriticosTrimestre++;
-                
-                // Verifica se especificamente no mês atual ele é crítico
-                const eCriticoAgora = (v0 <= 96.1 && v0 > 0);
-                if (eCriticoAgora) totalSitesCriticosMesAtual++;
+            const valorRaw = chaveMes ? row[chaveMes] : "0%";
+            const valorNum = parseFloat(valorRaw.replace(',', '.').replace('%', '')) || 0;
+
+            if (row.SITE) {
+                let eCritico = valorNum <= 96 && valorNum > 0;
+                if (eCritico) contCritico++;
 
                 corpo.innerHTML += `
                     <tr>
                         <td>${row.DDD || '-'}</td>
                         <td>${row.MUNICÍPIO || row.CIDADE || '-'}</td>
                         <td><strong>${row.SITE}</strong></td>
-                        <td>${row[colMes0] || '0%'}</td>
+                        <td>${valorRaw}</td>
                         <td>
-                            <span class="status-badge ${eCriticoAgora ? 'bg-vermelho' : 'bg-verde'}">
-                                ${eCriticoAgora ? 'CRÍTICO' : 'OK'}
+                            <span class="status-badge ${eCritico ? 'bg-vermelho' : 'bg-verde'}">
+                                ${eCritico ? 'CRÍTICO' : 'OK'}
                             </span>
                         </td>
                     </tr>`;
             }
         });
 
-        document.getElementById('countTotal').innerText = totalSitesCriticosTrimestre;
-        document.getElementById('countCritico').innerText = totalSitesCriticosMesAtual;
+        document.getElementById('countTotal').innerText = dados.length;
+        document.getElementById('countCritico').innerText = contCritico;
     }
 
-    window.onload = init;
+    // Inicia tudo automaticamente ao carregar a página
+    window.onload = definirMesEIniciar;
 </script>
 </body>
 </html>
-</script>
 </body>
 </html>
