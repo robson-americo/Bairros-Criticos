@@ -140,8 +140,8 @@
             if(perc < 96 && perc > 0) contAbaixo++;
 
             let classe = "bg-verde";
-            if(item["Críticidade Atual"] === "CRÍTICO" || perc < 94) classe = "bg-vermelho";
-            else if(perc < 96) classe = "bg-amarelo";
+            if(item["Críticidade Atual"] === "CRÍTICO" || perc < 96) classe = "bg-vermelho";
+            else if(perc < 98) classe = "bg-amarelo";
 
             corpo.innerHTML += `<tr>
                 <td>${item.DDD}</td>
