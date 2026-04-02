@@ -11,6 +11,9 @@
         /* Filtros e Cards */
         .filters { display: flex; flex-wrap: wrap; gap: 15px; margin-bottom: 25px; background: #fff; border: 1px solid #ddd; padding: 15px; border-radius: 8px; }
         .filter-group { flex: 1; min-width: 180px; display: flex; flex-direction: column; }
+        label { font-weight: bold; font-size: 13px; margin-bottom: 5px; color: #555; }
+        select, input { padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
+
         .summary { display: flex; gap: 15px; margin-bottom: 25px; }
         .card { flex: 1; padding: 15px; border-radius: 8px; text-align: center; color: white; font-weight: bold; }
         .card-total { background: #34495e; }
@@ -22,18 +25,17 @@
         th { background: #ecf0f1; padding: 12px; text-align: left; border-bottom: 2px solid #bdc3c7; }
         td { padding: 10px; border-bottom: 1px solid #eee; font-size: 14px; }
 
-        /* Modal (Janela de Histórico) */
+        /* Status Badges (Semáforo) */
+        .status-badge { padding: 6px 12px; border-radius: 20px; font-size: 11px; color: white !important; font-weight: bold; text-transform: uppercase; display: inline-block; min-width: 90px; text-align: center; }
+        .bg-vermelho { background-color: #d93025 !important; }
+        .bg-amarelo { background-color: #f9ab00 !important; color: #3c4043 !important; }
+        .bg-verde { background-color: #1e8e3e !important; }
+
+        /* Modal */
         .modal { display: none; position: fixed; z-index: 100; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); overflow-y: auto; }
-        .modal-content { background: white; margin: 5% auto; padding: 25px; width: 80%; border-radius: 12px; position: relative; }
+        .modal-content { background: white; margin: 5% auto; padding: 25px; width: 85%; border-radius: 12px; position: relative; }
         .close-btn { position: absolute; right: 20px; top: 15px; font-size: 28px; cursor: pointer; color: #999; }
         
-        /* Status Badges */
-        .status-badge { padding: 4px 8px; border-radius: 12px; font-size: 11px; color: white; font-weight: bold; }
-        .bg-vermelho { background: #e74c3c; }
-        .bg-amarelo { background: #f1c40f; color: #2c3e50; }
-        .bg-verde { background: #27ae60; }
-
-        /* Estilo Histórico */
         .causa-sumario { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px; }
         .causa-item { background: #fff; padding: 8px 15px; border: 1px solid #dee2e6; border-radius: 20px; font-size: 13px; }
     </style>
@@ -51,8 +53,8 @@
     </div>
 
     <div class="summary">
-        <div class="card card-total">Total Sites<span><id id="countTotal">0</id></span></div>
-        <div class="card card-critico">Menor que 96%<span><id id="countCritico">0</id></span></div>
+        <div class="card card-total">Total Sites Listados<span><id id="countTotal">0</id></span></div>
+        <div class="card card-critico">Sites < 96% (Mês Atual)<span><id id="countCritico">0</id></span></div>
     </div>
 
     <table>
@@ -65,20 +67,18 @@
     <div class="modal-content">
         <span class="close-btn" onclick="fecharModal()">&times;</span>
         <h3 id="modalTitulo">Histórico do Site</h3>
-        
         <div id="resumoCausas" class="causa-sumario"></div>
-
         <table id="tabelaHistorico">
-    <thead>
-        <tr>
-            <th>Data</th>
-            <th>TA Causa</th>
-            <th>Causa</th>
-            <th>Ação Realizada</th>
-        </tr>
-    </thead>
-    <tbody id="histBody"></tbody>
-</table>
+            <thead>
+                <tr>
+                    <th>DATA</th>
+                    <th>TA CAUSA</th>
+                    <th>CAUSA</th>
+                    <th>AÇÃO REALIZADA</th>
+                </tr>
+            </thead>
+            <tbody id="histBody"></tbody>
+        </table>
     </div>
 </div>
 
@@ -95,7 +95,12 @@
         Papa.parse(`${urlBase}&gid=${gidPrincipal}`, {
             download: true, header: true, skipEmptyLines: true,
             complete: function(res) {
-                dadosSites = res.data;
+                // Normaliza colunas para facilitar busca
+                dadosSites = res.data.map(row => {
+                    let newRow = {};
+                    Object.keys(row).forEach(k => newRow[k.trim().toUpperCase()] = row[k]);
+                    return newRow;
+                });
                 popularFiltros();
                 filtrar();
             }
@@ -103,13 +108,19 @@
         // Carrega aba Causas Diárias
         Papa.parse(`${urlBase}&gid=${gidCausas}`, {
             download: true, header: true, skipEmptyLines: true,
-            complete: function(res) { dadosCausas = res.data; }
+            complete: function(res) { 
+                dadosCausas = res.data.map(row => {
+                    let newRow = {};
+                    Object.keys(row).forEach(k => newRow[k.trim().toUpperCase()] = row[k]);
+                    return newRow;
+                });
+            }
         });
     }
 
     function popularFiltros() {
         const ddds = [...new Set(dadosSites.map(i => i.DDD))].filter(Boolean).sort();
-        const cidades = [...new Set(dadosSites.map(i => i.Município))].filter(Boolean).sort();
+        const cidades = [...new Set(dadosSites.map(i => i.MUNICÍPIO || i.CIDADE))].filter(Boolean).sort();
         ddds.forEach(d => document.getElementById('fDDD').add(new Option(d, d)));
         cidades.forEach(c => document.getElementById('fCidade').add(new Option(c, c)));
     }
@@ -122,9 +133,9 @@
 
         const filtrados = dadosSites.filter(i => {
             return (!ddd || i.DDD === ddd) &&
-                   (!cid || i.Município === cid) &&
+                   (!cid || (i.MUNICÍPIO === cid || i.CIDADE === cid)) &&
                    (!site || (i.SITE && i.SITE.toUpperCase().includes(site))) &&
-                   (!crit || i["Críticidade Atual"] === crit);
+                   (!crit || i["CRÍTICIDADE ATUAL"] === crit);
         });
         renderizarTabela(filtrados);
     }
@@ -136,20 +147,30 @@
 
         lista.forEach(item => {
             if(!item.SITE) return;
-            const perc = parseFloat((item["% Março"] || "0").replace(',', '.'));
+            const percRaw = item["% MARÇO"] || item["MARÇO"] || "0";
+            const perc = parseFloat(percRaw.replace(',', '.').replace('%', ''));
+            
+            // Lógica do Semáforo
+            let classe = "bg-verde";
+            let statusTexto = item["CRÍTICIDADE ATUAL"] || "OK";
+
+            if(item["CRÍTICIDADE ATUAL"] === "CRÍTICO" || perc < 94) {
+                classe = "bg-vermelho";
+                statusTexto = "CRÍTICO";
+            } else if(perc >= 94 && perc < 96) {
+                classe = "bg-amarelo";
+                statusTexto = "ALERTA";
+            }
+
             if(perc < 96 && perc > 0) contAbaixo++;
 
-            let classe = "bg-verde";
-            if(item["Críticidade Atual"] === "CRÍTICO" || perc < 96) classe = "bg-vermelho";
-            else if(perc < 98) classe = "bg-amarelo";
-
             corpo.innerHTML += `<tr>
-                <td>${item.DDD}</td>
-                <td>${item.Município}</td>
+                <td>${item.DDD || '-'}</td>
+                <td>${item.MUNICÍPIO || item.CIDADE || '-'}</td>
                 <td><strong>${item.SITE}</strong></td>
-                <td>${item["% Março"] || item["MARÇO"] || '0%'}</td>
-                <td><span class="status-badge ${classe}">${item["Críticidade Atual"] || 'OK'}</span></td>
-                <td><button class="btn-hist" onclick="abrirHistorico('${item.SITE}')" style="background:#2ecc71; color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer;">Histórico</button></td>
+                <td>${percRaw}</td>
+                <td><span class="status-badge ${classe}">${statusTexto}</span></td>
+                <td><button class="btn-hist" onclick="abrirHistorico('${item.SITE}')" style="background:#1a73e8; color:white; border:none; padding:6px 12px; border-radius:4px; cursor:pointer;">Histórico</button></td>
             </tr>`;
         });
         document.getElementById('countTotal').innerText = lista.length;
@@ -162,32 +183,35 @@
         const resumo = document.getElementById('resumoCausas');
         document.getElementById('modalTitulo').innerText = `Histórico de Eventos: ${siteID}`;
         
-        histBody.innerHTML = '';
+        histBody.innerHTML = '<tr><td colspan="4" style="text-align:center;">Buscando...</td></tr>';
         resumo.innerHTML = '';
 
-        // Filtra eventos do site na aba de Causas Diárias
-        const eventos = dadosCausas.filter(e => e.SITE === siteID);
+        const eventos = dadosCausas.filter(e => (e.SITE || "").toString().trim().toUpperCase() === siteID.trim().toUpperCase());
         const totalEventos = eventos.length;
 
         if(totalEventos === 0) {
-            histBody.innerHTML = '<tr><td colspan="4">Nenhum evento registrado para este site.</td></tr>';
+            histBody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:red;">Nenhum evento registrado para este site na aba Causas Diárias.</td></tr>';
         } else {
-            // Contagem de causas para o %
+            histBody.innerHTML = '';
             const contagemCausas = {};
+
             eventos.forEach(e => {
-                const causa = e["Causa Diária"] || "Não informada";
+                const data = e["DATA"] || "-";
+                const causa = e["CAUSA"] || "-";
+                const taCausa = e["TA CAUSA"] || "-";
+                const acao = e["AÇÃO REALIZADA"] || e["ACAO REALIZADA"] || "-";
+
                 contagemCausas[causa] = (contagemCausas[causa] || 0) + 1;
                 
                 histBody.innerHTML += `<tr>
-                    <td>${e.DATA || '-'}</td>
+                    <td>${data}</td>
+                    <td>${taCausa}</td>
                     <td>${causa}</td>
-                    <td>${e["Descrição do Problema"] || '-'}</td>
-                    <td>${e.IMPACTO || '-'}</td>
+                    <td>${acao}</td>
                 </tr>`;
             });
 
-            // Gera o totalizador de % por causa
-            resumo.innerHTML = `<div class="causa-item"><strong>Total de Eventos: ${totalEventos}</strong></div>`;
+            resumo.innerHTML = `<div class="causa-item" style="background:#2c3e50; color:white;"><strong>Total: ${totalEventos}</strong></div>`;
             for (let causa in contagemCausas) {
                 const perc = ((contagemCausas[causa] / totalEventos) * 100).toFixed(1);
                 resumo.innerHTML += `<div class="causa-item">${causa}: <strong>${contagemCausas[causa]} (${perc}%)</strong></div>`;
