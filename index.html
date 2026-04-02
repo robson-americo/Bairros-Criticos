@@ -178,48 +178,62 @@
     }
 
     function abrirHistorico(siteID) {
-        const modal = document.getElementById('modalHistorico');
-        const histBody = document.getElementById('histBody');
-        const resumo = document.getElementById('resumoCausas');
-        document.getElementById('modalTitulo').innerText = `Histórico de Eventos: ${siteID}`;
-        
-        histBody.innerHTML = '<tr><td colspan="4" style="text-align:center;">Buscando...</td></tr>';
-        resumo.innerHTML = '';
+    const modal = document.getElementById('modalHistorico');
+    const histBody = document.getElementById('histBody');
+    const resumo = document.getElementById('resumoCausas');
+    
+    document.getElementById('modalTitulo').innerText = `Histórico de Eventos: ${siteID}`;
+    histBody.innerHTML = '<tr><td colspan="4" style="text-align:center;">Buscando...</td></tr>';
+    resumo.innerHTML = '';
 
-        const eventos = dadosCausas.filter(e => (e.SITE || "").toString().trim().toUpperCase() === siteID.trim().toUpperCase());
-        const totalEventos = eventos.length;
-
-        if(totalEventos === 0) {
-            histBody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:red;">Nenhum evento registrado para este site na aba Causas Diárias.</td></tr>';
-        } else {
-            histBody.innerHTML = '';
-            const contagemCausas = {};
-
-            eventos.forEach(e => {
-                const data = e["DATA"] || "-";
-                const causa = e["CAUSA"] || "-";
-                const taCausa = e["TA CAUSA"] || "-";
-                const acao = e["AÇÃO REALIZADA"] || e["ACAO REALIZADA"] || "-";
-
-                contagemCausas[causa] = (contagemCausas[causa] || 0) + 1;
-                
-                histBody.innerHTML += `<tr>
-                    <td>${data}</td>
-                    <td>${taCausa}</td>
-                    <td>${causa}</td>
-                    <td>${acao}</td>
-                </tr>`;
-            });
-
-            resumo.innerHTML = `<div class="causa-item" style="background:#2c3e50; color:white;"><strong>Total: ${totalEventos}</strong></div>`;
-            for (let causa in contagemCausas) {
-                const perc = ((contagemCausas[causa] / totalEventos) * 100).toFixed(1);
-                resumo.innerHTML += `<div class="causa-item">${causa}: <strong>${contagemCausas[causa]} (${perc}%)</strong></div>`;
-            }
-        }
-        modal.style.display = "block";
+    // LOG DE DIAGNÓSTICO: Mostra no console do navegador (F12) o que o código está vendo
+    console.log("Tentando encontrar Site:", siteID);
+    if(dadosCausas.length > 0) {
+        console.log("Colunas lidas na aba Causas:", Object.keys(dadosCausas));
     }
 
+    // Filtra os eventos
+    const eventos = dadosCausas.filter(e => {
+        // Tentamos ler de 'SITE', 'Site' ou qualquer coluna que comece com 'SITE'
+        const s = (e["SITE"] || e["Site"] || "").toString().trim().toUpperCase();
+        return s === siteID.trim().toUpperCase();
+    });
+
+    if(eventos.length === 0) {
+        // Mensagem de erro detalhada para ajudar você a identificar o problema
+        histBody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:red; padding:20px;">
+            ERRO DE VÍNCULO:<br>
+            Não encontramos o site <strong>${siteID}</strong> na aba Causas Diárias.<br><br>
+            <small>Verifique se existe uma coluna chamada <strong>SITE</strong> na aba de causas e se o nome do site está escrito igual.</small>
+        </td></tr>`;
+    } else {
+        histBody.innerHTML = '';
+        const contagemCausas = {};
+
+        eventos.forEach(e => {
+            const data = e["DATA"] || "-";
+            const causa = e["CAUSA"] || "-";
+            const taCausa = e["TA CAUSA"] || "-";
+            const acao = e["AÇÃO REALIZADA"] || e["ACAO REALIZADA"] || "-";
+
+            contagemCausas[causa] = (contagemCausas[causa] || 0) + 1;
+            
+            histBody.innerHTML += `<tr>
+                <td>${data}</td>
+                <td>${taCausa}</td>
+                <td>${causa}</td>
+                <td>${acao}</td>
+            </tr>`;
+        });
+
+        resumo.innerHTML = `<div class="causa-item" style="background:#2c3e50; color:white;"><strong>Total: ${eventos.length}</strong></div>`;
+        for (let c in contagemCausas) {
+            const p = ((contagemCausas[c] / eventos.length) * 100).toFixed(1);
+            resumo.innerHTML += `<div class="causa-item">${c}: <strong>${contagemCausas[c]} (${p}%)</strong></div>`;
+        }
+    }
+    modal.style.display = "block";
+}
     function fecharModal() { document.getElementById('modalHistorico').style.display = "none"; }
     window.onclick = function(event) { if (event.target == document.getElementById('modalHistorico')) fecharModal(); }
 
