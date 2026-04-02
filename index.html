@@ -2,37 +2,40 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>Painel de Controle - Bairros Críticos</title>
+    <title>Painel de Bairros Críticos & Histórico</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
     <style>
-        body { font-family: 'Segoe UI', Arial, sans-serif; margin: 20px; background-color: #f4f4f9; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; margin: 20px; background-color: #f4f4f9; color: #333; }
         .container { max-width: 1300px; margin: auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
         
-        h2 { color: #2c3e50; text-align: center; margin-bottom: 30px; }
-
+        /* Filtros e Cards */
         .filters { display: flex; flex-wrap: wrap; gap: 15px; margin-bottom: 25px; background: #fff; border: 1px solid #ddd; padding: 15px; border-radius: 8px; }
-        .filter-group { flex: 1; min-width: 200px; display: flex; flex-direction: column; }
-        label { font-weight: bold; font-size: 13px; margin-bottom: 5px; color: #555; }
-        select, input { padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
-
+        .filter-group { flex: 1; min-width: 180px; display: flex; flex-direction: column; }
         .summary { display: flex; gap: 15px; margin-bottom: 25px; }
-        .card { flex: 1; padding: 20px; border-radius: 8px; text-align: center; color: white; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .card { flex: 1; padding: 15px; border-radius: 8px; text-align: center; color: white; font-weight: bold; }
         .card-total { background: #34495e; }
         .card-critico { background: #e74c3c; }
-        .card span { display: block; font-size: 32px; margin-top: 5px; }
+        .card span { display: block; font-size: 28px; }
 
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; background: white; }
-        th { background: #ecf0f1; padding: 12px; text-align: left; border-bottom: 2px solid #bdc3c7; color: #2c3e50; }
+        /* Tabelas */
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th { background: #ecf0f1; padding: 12px; text-align: left; border-bottom: 2px solid #bdc3c7; }
         td { padding: 10px; border-bottom: 1px solid #eee; font-size: 14px; }
 
-        /* Estilos do Status (Semáforo) */
-        .status-badge { padding: 5px 10px; border-radius: 15px; font-size: 11px; font-weight: bold; color: white; text-transform: uppercase; display: inline-block; min-width: 80px; text-align: center; }
-        .bg-vermelho { background-color: #e74c3c; } /* Crítico */
-        .bg-amarelo { background-color: #f1c40f; color: #2c3e50; } /* Alerta */
-        .bg-verde { background-color: #27ae60; } /* OK / Não Crítico */
+        /* Modal (Janela de Histórico) */
+        .modal { display: none; position: fixed; z-index: 100; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); overflow-y: auto; }
+        .modal-content { background: white; margin: 5% auto; padding: 25px; width: 80%; border-radius: 12px; position: relative; }
+        .close-btn { position: absolute; right: 20px; top: 15px; font-size: 28px; cursor: pointer; color: #999; }
+        
+        /* Status Badges */
+        .status-badge { padding: 4px 8px; border-radius: 12px; font-size: 11px; color: white; font-weight: bold; }
+        .bg-vermelho { background: #e74c3c; }
+        .bg-amarelo { background: #f1c40f; color: #2c3e50; }
+        .bg-verde { background: #27ae60; }
 
-        .btn-hist { background: #3498db; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; }
-        .btn-hist:hover { background: #2980b9; }
+        /* Estilo Histórico */
+        .causa-sumario { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px; }
+        .causa-item { background: #fff; padding: 8px 15px; border: 1px solid #dee2e6; border-radius: 20px; font-size: 13px; }
     </style>
 </head>
 <body>
@@ -41,80 +44,67 @@
     <h2>Análise de Bairros Críticos</h2>
 
     <div class="filters">
-        <div class="filter-group">
-            <label>DDD</label>
-            <select id="fDDD" onchange="filtrar()"><option value="">Todos</option></select>
-        </div>
-        <div class="filter-group">
-            <label>Cidade</label>
-            <select id="fCidade" onchange="filtrar()"><option value="">Todas</option></select>
-        </div>
-        <div class="filter-group">
-            <label>Site (Busca)</label>
-            <input type="text" id="fSite" placeholder="Digite o site..." onkeyup="filtrar()">
-        </div>
-        <div class="filter-group">
-            <label>Criticidade</label>
-            <select id="fCrit" onchange="filtrar()">
-                <option value="">Todas</option>
-                <option value="CRÍTICO">CRÍTICO</option>
-                <option value="NÃO CRÍTICO">NÃO CRÍTICO</option>
-            </select>
-        </div>
+        <div class="filter-group"><label>DDD</label><select id="fDDD" onchange="filtrar()"><option value="">Todos</option></select></div>
+        <div class="filter-group"><label>Cidade</label><select id="fCidade" onchange="filtrar()"><option value="">Todas</option></select></div>
+        <div class="filter-group"><label>Site</label><input type="text" id="fSite" placeholder="Buscar site..." onkeyup="filtrar()"></div>
+        <div class="filter-group"><label>Criticidade</label><select id="fCrit" onchange="filtrar()"><option value="">Todas</option><option value="CRÍTICO">CRÍTICO</option><option value="NÃO CRÍTICO">NÃO CRÍTICO</option></select></div>
     </div>
 
     <div class="summary">
-        <div class="card card-total">Total de Sites<span><id id="countTotal">0</id></span></div>
-        <div class="card card-critico">Sites < 96% (Mês Atual)<span><id id="countCritico">0</id></span></div>
+        <div class="card card-total">Total Sites<span><id id="countTotal">0</id></span></div>
+        <div class="card card-critico">Menor que 96%<span><id id="countCritico">0</id></span></div>
     </div>
 
     <table>
-        <thead>
-            <tr>
-                <th>DDD</th>
-                <th>Cidade</th>
-                <th>Site</th>
-                <th>% Março</th>
-                <th>Status / Criticidade</th>
-                <th>Ação</th>
-            </tr>
-        </thead>
+        <thead><tr><th>DDD</th><th>Cidade</th><th>Site</th><th>% Março</th><th>Status</th><th>Ação</th></tr></thead>
         <tbody id="tabelaBody"></tbody>
     </table>
 </div>
 
-<script>
-    const csvUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vR-3nl-LoJW7XThg1nyC2ngjbOZwFah_I0i3Vn-92jUUmC-TfFq_KgX15WtXr4ZKh8F34WjrPEEbdVK/pub?output=csv";
-    let dadosOriginais = [];
+<div id="modalHistorico" class="modal">
+    <div class="modal-content">
+        <span class="close-btn" onclick="fecharModal()">&times;</span>
+        <h3 id="modalTitulo">Histórico do Site</h3>
+        
+        <div id="resumoCausas" class="causa-sumario"></div>
 
-    // Função para limpar números da planilha (ex: "95,50%" vira 95.5)
-    function limparNumero(valor) {
-        if (!valor) return 0;
-        return parseFloat(valor.toString().replace('%', '').replace(',', '.').trim()) || 0;
-    }
+        <table id="tabelaHistorico">
+            <thead><tr><th>Data</th><th>Causa Diária</th><th>Descrição</th><th>Impacto</th></tr></thead>
+            <tbody id="histBody"></tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    const urlBase = "https://docs.google.com/spreadsheets/d/1p7Q7vdCMvzWZNXlsemZ2BocFoAcji6LnHuI0yAP8jlw/export?format=csv";
+    const gidPrincipal = "669721322";
+    const gidCausas = "1336499849";
+
+    let dadosSites = [];
+    let dadosCausas = [];
 
     function init() {
-        Papa.parse(csvUrl, {
-            download: true,
-            header: true,
-            skipEmptyLines: true,
+        // Carrega aba Principal
+        Papa.parse(`${urlBase}&gid=${gidPrincipal}`, {
+            download: true, header: true, skipEmptyLines: true,
             complete: function(res) {
-                dadosOriginais = res.data;
+                dadosSites = res.data;
                 popularFiltros();
                 filtrar();
             }
         });
+        // Carrega aba Causas Diárias
+        Papa.parse(`${urlBase}&gid=${gidCausas}`, {
+            download: true, header: true, skipEmptyLines: true,
+            complete: function(res) { dadosCausas = res.data; }
+        });
     }
 
     function popularFiltros() {
-        const ddds = [...new Set(dadosOriginais.map(i => i.DDD))].sort();
-        const cidades = [...new Set(dadosOriginais.map(i => i.Município))].sort();
-        
-        const selDDD = document.getElementById('fDDD');
-        const selCid = document.getElementById('fCidade');
-
-        ddds.forEach(d => { if(d) selDDD.add(new Option(d, d)) });
-        cidades.forEach(c => { if(c) selCid.add(new Option(c, c)) });
+        const ddds = [...new Set(dadosSites.map(i => i.DDD))].filter(Boolean).sort();
+        const cidades = [...new Set(dadosSites.map(i => i.Município))].filter(Boolean).sort();
+        ddds.forEach(d => document.getElementById('fDDD').add(new Option(d, d)));
+        cidades.forEach(c => document.getElementById('fCidade').add(new Option(c, c)));
     }
 
     function filtrar() {
@@ -123,58 +113,84 @@
         const site = document.getElementById('fSite').value.toUpperCase();
         const crit = document.getElementById('fCrit').value;
 
-        const filtrados = dadosOriginais.filter(i => {
+        const filtrados = dadosSites.filter(i => {
             return (!ddd || i.DDD === ddd) &&
                    (!cid || i.Município === cid) &&
-                   (!site || i.SITE.toUpperCase().includes(site)) &&
+                   (!site || (i.SITE && i.SITE.toUpperCase().includes(site))) &&
                    (!crit || i["Críticidade Atual"] === crit);
         });
-
-        exibirTabela(filtrados);
+        renderizarTabela(filtrados);
     }
 
-    function exibirTabela(lista) {
+    function renderizarTabela(lista) {
         const corpo = document.getElementById('tabelaBody');
         corpo.innerHTML = '';
-        let abaixo96 = 0;
+        let contAbaixo = 0;
 
         lista.forEach(item => {
             if(!item.SITE) return;
+            const perc = parseFloat((item["% Março"] || "0").replace(',', '.'));
+            if(perc < 96 && perc > 0) contAbaixo++;
 
-            // Busca a coluna de Março independente de como esteja escrita
-            const valorMarçoRaw = item["% Março"] || item["MARÇO"] || item["Março"] || "0";
-            const numMarço = limparNumero(valorMarçoRaw);
+            let classe = "bg-verde";
+            if(item["Críticidade Atual"] === "CRÍTICO" || perc < 94) classe = "bg-vermelho";
+            else if(perc < 96) classe = "bg-amarelo";
 
-            // Contabiliza se for menor que 96%
-            if (numMarço < 96 && numMarço > 0) abaixo96++;
-
-            // Define a cor do Status (Semáforo)
-            let classeCor = "bg-verde";
-            let labelStatus = item["Críticidade Atual"] || "OK";
-
-            if (labelStatus === "CRÍTICO" || numMarço < 94) {
-                classeCor = "bg-vermelho";
-            } else if (numMarço >= 94 && numMarço < 96) {
-                classeCor = "bg-amarelo";
-                labelStatus = "ALERTA";
-            } else if (labelStatus === "NÃO CRÍTICO") {
-                classeCor = "bg-verde";
-            }
-
-            const tr = `<tr>
+            corpo.innerHTML += `<tr>
                 <td>${item.DDD}</td>
                 <td>${item.Município}</td>
                 <td><strong>${item.SITE}</strong></td>
-                <td>${valorMarçoRaw}</td>
-                <td><span class="status-badge ${classeCor}">${labelStatus}</span></td>
-                <td><button class="btn-hist" onclick="alert('Histórico do site ${item.SITE}')">Histórico</button></td>
+                <td>${item["% Março"] || item["MARÇO"] || '0%'}</td>
+                <td><span class="status-badge ${classe}">${item["Críticidade Atual"] || 'OK'}</span></td>
+                <td><button class="btn-hist" onclick="abrirHistorico('${item.SITE}')" style="background:#2ecc71; color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer;">Histórico</button></td>
             </tr>`;
-            corpo.innerHTML += tr;
         });
-
         document.getElementById('countTotal').innerText = lista.length;
-        document.getElementById('countCritico').innerText = abaixo96;
+        document.getElementById('countCritico').innerText = contAbaixo;
     }
+
+    function abrirHistorico(siteID) {
+        const modal = document.getElementById('modalHistorico');
+        const histBody = document.getElementById('histBody');
+        const resumo = document.getElementById('resumoCausas');
+        document.getElementById('modalTitulo').innerText = `Histórico de Eventos: ${siteID}`;
+        
+        histBody.innerHTML = '';
+        resumo.innerHTML = '';
+
+        // Filtra eventos do site na aba de Causas Diárias
+        const eventos = dadosCausas.filter(e => e.SITE === siteID);
+        const totalEventos = eventos.length;
+
+        if(totalEventos === 0) {
+            histBody.innerHTML = '<tr><td colspan="4">Nenhum evento registrado para este site.</td></tr>';
+        } else {
+            // Contagem de causas para o %
+            const contagemCausas = {};
+            eventos.forEach(e => {
+                const causa = e["Causa Diária"] || "Não informada";
+                contagemCausas[causa] = (contagemCausas[causa] || 0) + 1;
+                
+                histBody.innerHTML += `<tr>
+                    <td>${e.DATA || '-'}</td>
+                    <td>${causa}</td>
+                    <td>${e["Descrição do Problema"] || '-'}</td>
+                    <td>${e.IMPACTO || '-'}</td>
+                </tr>`;
+            });
+
+            // Gera o totalizador de % por causa
+            resumo.innerHTML = `<div class="causa-item"><strong>Total de Eventos: ${totalEventos}</strong></div>`;
+            for (let causa in contagemCausas) {
+                const perc = ((contagemCausas[causa] / totalEventos) * 100).toFixed(1);
+                resumo.innerHTML += `<div class="causa-item">${causa}: <strong>${contagemCausas[causa]} (${perc}%)</strong></div>`;
+            }
+        }
+        modal.style.display = "block";
+    }
+
+    function fecharModal() { document.getElementById('modalHistorico').style.display = "none"; }
+    window.onclick = function(event) { if (event.target == document.getElementById('modalHistorico')) fecharModal(); }
 
     window.onload = init;
 </script>
