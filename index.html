@@ -2,57 +2,38 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>Painel de Bairros Críticos & Histórico</title>
+    <title>Painel de Bairros Críticos</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
     <style>
         body { font-family: 'Segoe UI', Arial, sans-serif; margin: 20px; background-color: #f4f4f9; color: #333; }
         .container { max-width: 1300px; margin: auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
-        .filters { display: flex; flex-wrap: wrap; gap: 15px; margin-bottom: 25px; background: #fff; border: 1px solid #ddd; padding: 15px; border-radius: 8px; align-items: flex-end; }
-        .filter-group { flex: 1; min-width: 180px; display: flex; flex-direction: column; }
-        label { font-weight: bold; font-size: 13px; margin-bottom: 5px; color: #555; }
-        select, input { padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
-        .btn-clear { background-color: #6c757d; color: white; border: none; padding: 9px 15px; border-radius: 4px; cursor: pointer; font-weight: bold; transition: background 0.3s; height: 35px; }
-        .btn-clear:hover { background-color: #5a6268; }
         .summary { display: flex; gap: 15px; margin-bottom: 25px; }
         .card { flex: 1; padding: 15px; border-radius: 8px; text-align: center; color: white; font-weight: bold; }
         .card-total { background: #34495e; }
-        .card-critico { background: #e74c3c; }
-        .card span { display: block; font-size: 28px; }
+        .card-critico { background: #e74c3c; font-size: 16px; }
+        .card span.contador { display: block; font-size: 32px; margin-top: 5px; }
+        
         table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-        th { background: #ecf0f1; padding: 12px; text-align: left; border-bottom: 2px solid #bdc3c7; }
+        th { background: #ecf0f1; padding: 12px; text-align: left; border-bottom: 2px solid #bdc3c7; font-size: 13px; }
         td { padding: 10px; border-bottom: 1px solid #eee; font-size: 14px; }
-        .status-badge { padding: 6px 12px; border-radius: 20px; font-size: 11px; color: white !important; font-weight: bold; text-transform: uppercase; display: inline-block; min-width: 90px; text-align: center; }
-        .bg-vermelho { background-color: #d93025 !important; }
-        .bg-amarelo { background-color: #f9ab00 !important; color: #3c4043 !important; }
-        .bg-verde { background-color: #1e8e3e !important; }
-        .action-btns { display: flex; gap: 5px; }
-        .btn-hist { background: #1a73e8; color: white; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; }
-        .btn-vist { color: white; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; text-decoration: none; text-align: center; transition: opacity 0.3s; }
-        .btn-vist:hover { opacity: 0.8; }
-        .modal { display: none; position: fixed; z-index: 100; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); overflow-y: auto; }
-        .modal-content { background: white; margin: 5% auto; padding: 25px; width: 85%; border-radius: 12px; position: relative; }
-        .close-btn { position: absolute; right: 20px; top: 15px; font-size: 28px; cursor: pointer; color: #999; }
-        .causa-sumario { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px; }
-        .causa-item { background: #fff; padding: 8px 15px; border: 1px solid #dee2e6; border-radius: 20px; font-size: 13px; }
+        .status-badge { padding: 6px 12px; border-radius: 20px; font-size: 11px; color: white; font-weight: bold; display: inline-block; }
+        .bg-vermelho { background-color: #d93025; }
+        .bg-verde { background-color: #1e8e3e; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h2>Análise de Bairros Críticos</h2>
-
-    <div class="filters">
-        <div class="filter-group"><label>DDD</label><select id="fDDD" onchange="filtrar()"><option value="">Todos</option></select></div>
-        <div class="filter-group"><label>Cidade</label><select id="fCidade" onchange="filtrar()"><option value="">Todas</option></select></div>
-        <div class="filter-group"><label>Site</label><input type="text" id="fSite" placeholder="Buscar site..." onkeyup="filtrar()"></div>
-        <div class="filter-group"><label>Criticidade</label><select id="fCrit" onchange="filtrar()"><option value="">Todas</option><option value="CRÍTICO">CRÍTICO</option><option value="NÃO CRÍTICO">NÃO CRÍTICO</option></select></div>
-        <button class="btn-clear" onclick="limparFiltros()">Limpar Filtros</button>
-    </div>
+    <h2>Análise de Bairros Críticos (Trimestre Móvel)</h2>
 
     <div class="summary">
-        <div class="card card-total">Total Sites Listados<span><id id="countTotal">0</id></span></div>
+        <div class="card card-total">
+            Total Sites Críticos (3 Meses)
+            <span class="contador" id="countTotal">0</span>
+        </div>
+        
         <div class="card card-critico">
-            <span id="labelMesCard" class="mes-label">MÊS</span>
+            <span id="labelMesCard">MÊS</span> <= 96%
             <span id="countCritico" class="contador">0</span>
         </div>
     </div>
@@ -64,215 +45,103 @@
                 <th>Cidade</th>
                 <th>Site</th>
                 <th id="labelMesTabela">% Mês</th>
-                <th>Status do Mês</th>
-                <th>Ações</th>
+                <th>Status</th>
             </tr>
         </thead>
         <tbody id="tabelaBody"></tbody>
     </table>
 </div>
 
-<div id="modalHistorico" class="modal">
-    <div class="modal-content">
-        <span class="close-btn" onclick="fecharModal()">&times;</span>
-        <h3 id="modalTitulo">Histórico do Site</h3>
-        <div id="resumoCausas" class="causa-sumario"></div>
-        <table id="tabelaHistorico">
-            <thead>
-                <tr>
-                    <th>DATA</th>
-                    <th>TA CAUSA</th>
-                    <th>CAUSA</th>
-                    <th>AÇÃO REALIZADA</th>
-                </tr>
-            </thead>
-            <tbody id="histBody"></tbody>
-        </table>
-    </div>
-</div>
-
 <script>
-    const urlBase = "https://docs.google.com/spreadsheets/d/1p7Q7vdCMvzWZNXlsemZ2BocFoAcji6LnHuI0yAP8jlw/export?format=csv";
-    const gidPrincipal = "669721322";
-    const gidCausas = "2146860357";
+    const urlBase = "https://docs.google.com/spreadsheets/d/1p7Q7vdCMvzWZNXlsemZ2BocFoAcji6LnHuI0yAP8jlw/export?format=csv&gid=669721322";
+    
+    let mes0 = ""; // Atual
+    let mes1 = ""; // Anterior
+    let mes2 = ""; // Retrasado
 
-    let dadosSites = [];
-    let dadosCausas = [];
-    let mesAtualNome = "";
-    let mesRemoverNome = "";
+    function definirMeses() {
+        const nomes = ["JANEIRO", "FEVEREIRO", "MARÇO", "ABRIL", "MAIO", "JUNHO", "JULHO", "AGOSTO", "SETEMBRO", "OUTUBRO", "NOVEMBRO", "DEZEMBRO"];
+        const hoje = new Date();
+        
+        mes0 = nomes[hoje.getMonth()];
+        mes1 = nomes[(hoje.getMonth() - 1 + 12) % 12];
+        mes2 = nomes[(hoje.getMonth() - 2 + 12) % 12];
 
-    function definirMesAtual() {
-        const meses = ["JANEIRO", "FEVEREIRO", "MARÇO", "ABRIL", "MAIO", "JUNHO", "JULHO", "AGOSTO", "SETEMBRO", "OUTUBRO", "NOVEMBRO", "DEZEMBRO"];
-        const dataHoje = new Date();
-        const mesAtualIndex = dataHoje.getMonth();
-        
-        mesAtualNome = meses[mesAtualIndex];
-        
-        // Calcula o 3º mês anterior (ex: Abril (3) - 3 = Janeiro (0))
-        const mesRemoverIndex = (mesAtualIndex - 3 + 12) % 12;
-        mesRemoverNome = meses[mesRemoverIndex];
+        document.getElementById('labelMesCard').innerText = mes0;
+        document.getElementById('labelMesTabela').innerText = "% " + mes0;
+    }
 
-        document.getElementById('labelMesCard').innerText = mesAtualNome;
-        document.getElementById('labelMesTabela').innerText = "% " + mesAtualNome;
-        
-        console.log("Mês Atual:", mesAtualNome);
-        console.log("Mês removido da consulta:", mesRemoverNome);
+    function converterValor(valor) {
+        if (!valor) return 100;
+        return parseFloat(valor.toString().replace(',', '.').replace('%', '')) || 0;
     }
 
     function init() {
-        definirMesAtual();
-        Papa.parse(`${urlBase}&gid=${gidPrincipal}`, {
-            download: true, header: true, skipEmptyLines: true,
+        definirMeses();
+        Papa.parse(urlBase, {
+            download: true,
+            header: true,
+            skipEmptyLines: true,
             complete: function(res) {
-                dadosSites = res.data.map(row => {
-                    let newRow = {};
-                    Object.keys(row).forEach(k => newRow[k.trim().toUpperCase()] = row[k]);
-                    return newRow;
-                });
-                popularFiltros();
-                filtrar();
-            }
-        });
-        Papa.parse(`${urlBase}&gid=${gidCausas}`, {
-            download: true, header: true, skipEmptyLines: true,
-            complete: function(res) { 
-                // Filtra as causas removendo o 3º mês anterior antes de salvar na variável global
-                dadosCausas = res.data
-                    .map(row => {
-                        let newRow = {};
-                        Object.keys(row).forEach(k => newRow[k.trim().toUpperCase()] = row[k]);
-                        return newRow;
-                    })
-                    .filter(evento => {
-                        // Assume que a coluna DATA contém o nome do mês ou a data formatada
-                        const dataEvento = (evento["DATA"] || "").toUpperCase();
-                        return !dataEvento.includes(mesRemoverNome);
-                    });
+                processarDados(res.data);
             }
         });
     }
 
-    function popularFiltros() {
-        const ddds = [...new Set(dadosSites.map(i => i.DDD))].filter(Boolean).sort();
-        const cidades = [...new Set(dadosSites.map(i => i.MUNICÍPIO || i.CIDADE))].filter(Boolean).sort();
-        const selDDD = document.getElementById('fDDD');
-        const selCid = document.getElementById('fCidade');
-        selDDD.innerHTML = '<option value="">Todos</option>';
-        selCid.innerHTML = '<option value="">Todas</option>';
-        ddds.forEach(d => selDDD.add(new Option(d, d)));
-        cidades.forEach(c => selCid.add(new Option(c, c)));
-    }
-
-    function filtrar() {
-        const ddd = document.getElementById('fDDD').value;
-        const cid = document.getElementById('fCidade').value;
-        const site = document.getElementById('fSite').value.toUpperCase();
-        const crit = document.getElementById('fCrit').value;
-        const filtrados = dadosSites.filter(i => {
-            return (!ddd || i.DDD === ddd) && 
-                   (!cid || (i.MUNICÍPIO === cid || i.CIDADE === cid)) && 
-                   (!site || (i.SITE && i.SITE.toUpperCase().includes(site))) && 
-                   (!crit || i["CRÍTICIDADE ATUAL"] === crit);
-        });
-        renderizarTabela(filtrados);
-    }
-
-    function limparFiltros() {
-        document.getElementById('fDDD').value = "";
-        document.getElementById('fCidade').value = "";
-        document.getElementById('fSite').value = "";
-        document.getElementById('fCrit').value = "";
-        filtrar();
-    }
-
-    function abrirVistoria(url, siteID) {
-        if (!url || url === "-" || url.trim() === "") {
-            alert(`Necessário realizar vistoria para o site ${siteID}.`);
-        } else {
-            window.open(url, '_blank');
-        }
-    }
-
-    function renderizarTabela(lista) {
+    function processarDados(dados) {
         const corpo = document.getElementById('tabelaBody');
         corpo.innerHTML = '';
-        let contAbaixo = 0;
+        
+        let totalSitesCriticosTrimestre = 0;
+        let totalSitesCriticosMesAtual = 0;
 
-        lista.forEach(item => {
-            if(!item.SITE) return;
-            const percRaw = item["% " + mesAtualNome] || item[mesAtualNome] || "0";
-            const perc = parseFloat(percRaw.toString().replace(',', '.').replace('%', ''));
+        dados.forEach(row => {
+            if (!row.SITE) return;
+
+            const colunas = Object.keys(row);
             
-            let classe = "bg-verde";
-            let statusTexto = item["CRÍTICIDADE ATUAL"] || "OK";
+            // Busca as colunas dos 3 meses
+            const colMes0 = colunas.find(k => k.toUpperCase().includes(mes0));
+            const colMes1 = colunas.find(k => k.toUpperCase().includes(mes1));
+            const colMes2 = colunas.find(k => k.toUpperCase().includes(mes2));
 
-            if(item["CRÍTICIDADE ATUAL"] === "CRÍTICO" || perc <= 96) {
-                classe = "bg-vermelho";
-                statusTexto = "CRÍTICO";
-            } else if(perc > 96 && perc < 98) {
-                classe = "bg-amarelo";
-                statusTexto = "ALERTA";
+            const v0 = converterValor(row[colMes0]);
+            const v1 = converterValor(row[colMes1]);
+            const v2 = converterValor(row[colMes2]);
+
+            // REGRA: O site entra na lista se for <= 96 em QUALQUER um dos 3 meses
+            const eCriticoNoTrimestre = (v0 <= 96.1 && v0 > 0) || (v1 <= 96.1 && v1 > 0) || (v2 <= 96.1 && v2 > 0);
+            
+            if (eCriticoNoTrimestre) {
+                totalSitesCriticosTrimestre++;
+                
+                // Verifica se especificamente no mês atual ele é crítico
+                const eCriticoAgora = (v0 <= 96.1 && v0 > 0);
+                if (eCriticoAgora) totalSitesCriticosMesAtual++;
+
+                corpo.innerHTML += `
+                    <tr>
+                        <td>${row.DDD || '-'}</td>
+                        <td>${row.MUNICÍPIO || row.CIDADE || '-'}</td>
+                        <td><strong>${row.SITE}</strong></td>
+                        <td>${row[colMes0] || '0%'}</td>
+                        <td>
+                            <span class="status-badge ${eCriticoAgora ? 'bg-vermelho' : 'bg-verde'}">
+                                ${eCriticoAgora ? 'CRÍTICO' : 'OK'}
+                            </span>
+                        </td>
+                    </tr>`;
             }
-            if(perc <= 96 && perc > 0) contAbaixo++;
-
-            const linkVistoria = (item["VISTORIA"] || "").trim();
-            const temLink = (linkVistoria !== "" && linkVistoria !== "-");
-            const corBotao = temLink ? "#27ae60" : "#7f8c8d";
-
-            corpo.innerHTML += `<tr> 
-                <td>${item.DDD || '-'}</td> 
-                <td>${item.MUNICÍPIO || item.CIDADE || '-'}</td> 
-                <td><strong>${item.SITE}</strong></td> 
-                <td>${percRaw}</td> 
-                <td><span class="status-badge ${classe}">${statusTexto}</span></td> 
-                <td> 
-                    <div class="action-btns"> 
-                        <button class="btn-hist" onclick="abrirHistorico('${item.SITE}')">Histórico</button> 
-                        <button class="btn-vist" style="background-color: ${corBotao}" onclick="abrirVistoria('${linkVistoria}', '${item.SITE}')">Vistoria</button> 
-                    </div> 
-                </td> 
-            </tr>`; 
         });
-        document.getElementById('countTotal').innerText = lista.length;
-        document.getElementById('countCritico').innerText = contAbaixo;
+
+        document.getElementById('countTotal').innerText = totalSitesCriticosTrimestre;
+        document.getElementById('countCritico').innerText = totalSitesCriticosMesAtual;
     }
 
-    function abrirHistorico(siteID) {
-        const modal = document.getElementById('modalHistorico');
-        const histBody = document.getElementById('histBody');
-        const resumo = document.getElementById('resumoCausas');
-        document.getElementById('modalTitulo').innerText = `Histórico de Eventos (Excluindo ${mesRemoverNome}): ${siteID}`;
-        histBody.innerHTML = '<tr><td colspan="4" style="text-align:center;">Buscando...</td></tr>';
-        resumo.innerHTML = '';
-
-        const eventos = dadosCausas.filter(e => (e.SITE || "").toString().trim().toUpperCase() === siteID.trim().toUpperCase());
-
-        if(eventos.length === 0) {
-            histBody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:red; padding:20px;">Sem eventos registrados para ${siteID} no período consultado.</td></tr>`;
-        } else {
-            histBody.innerHTML = '';
-            const contagemCausas = {};
-            eventos.forEach(e => {
-                const data = e["DATA"] || "-";
-                const causa = e["CAUSA"] || "-";
-                const taCausa = e["TA CAUSA"] || "-";
-                const acao = e["AÇÃO REALIZADA"] || e["ACAO REALIZADA"] || "-";
-                contagemCausas[causa] = (contagemCausas[causa] || 0) + 1;
-                histBody.innerHTML += `<tr><td>${data}</td><td>${taCausa}</td><td>${causa}</td><td>${acao}</td></tr>`;
-            });
-
-            resumo.innerHTML = `<div class="causa-item" style="background:#2c3e50; color:white;"><strong>Total: ${eventos.length}</strong></div>`;
-            for (let c in contagemCausas) {
-                const p = ((contagemCausas[c] / eventos.length) * 100).toFixed(1);
-                resumo.innerHTML += `<div class="causa-item">${c}: <strong>${contagemCausas[c]} (${p}%)</strong></div>`;
-            }
-        }
-        modal.style.display = "block";
-    }
-
-    function fecharModal() { document.getElementById('modalHistorico').style.display = "none"; }
-    window.onclick = function(event) { if (event.target == document.getElementById('modalHistorico')) fecharModal(); }
     window.onload = init;
+</script>
+</body>
+</html>
 </script>
 </body>
 </html>
