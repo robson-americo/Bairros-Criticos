@@ -18,7 +18,6 @@
         .card-total { background: #34495e; }
         .card-critico { background: #e74c3c; }
         .card span { display: block; font-size: 28px; }
-        .card .label-top { font-size: 14px; text-transform: uppercase; margin-bottom: 5px; }
         table { width: 100%; border-collapse: collapse; margin-top: 10px; }
         th { background: #ecf0f1; padding: 12px; text-align: left; border-bottom: 2px solid #bdc3c7; }
         td { padding: 10px; border-bottom: 1px solid #eee; font-size: 14px; }
@@ -102,27 +101,21 @@
 
     let dadosSites = [];
     let dadosCausas = [];
-    let mes0 = "", mes1 = "", mes2 = "";
+    let mesAtualNome = "";
 
-    function definirMeses() {
+    // Função para identificar o mês atual dinamicamente
+    function definirMesAtual() {
         const meses = ["JANEIRO", "FEVEREIRO", "MARÇO", "ABRIL", "MAIO", "JUNHO", "JULHO", "AGOSTO", "SETEMBRO", "OUTUBRO", "NOVEMBRO", "DEZEMBRO"];
         const dataHoje = new Date();
+        mesAtualNome = meses[dataHoje.getMonth()];
         
-        mes0 = meses[dataHoje.getMonth()]; // Atual
-        mes1 = meses[(dataHoje.getMonth() - 1 + 12) % 12]; // Passado
-        mes2 = meses[(dataHoje.getMonth() - 2 + 12) % 12]; // Retrasado
-        
-        document.getElementById('labelMesCard').innerText = mes0;
-        document.getElementById('labelMesTabela').innerText = "% " + mes0;
-    }
-
-    function converterValor(valor) {
-        if (!valor || valor === "-") return 100;
-        return parseFloat(valor.toString().replace(',', '.').replace('%', '')) || 0;
+        // Atualiza os textos na interface
+        document.getElementById('labelMesCard').innerText = mesAtualNome;
+        document.getElementById('labelMesTabela').innerText = "% " + mesAtualNome;
     }
 
     function init() {
-        definirMeses();
+        definirMesAtual();
         Papa.parse(`${urlBase}&gid=${gidPrincipal}`, {
             download: true, header: true, skipEmptyLines: true,
             complete: function(res) {
@@ -161,48 +154,57 @@
     function filtrar() {
         const ddd = document.getElementById('fDDD').value;
         const cid = document.getElementById('fCidade').value;
-        const siteS = document.getElementById('fSite').value.toUpperCase();
-        const critF = document.getElementById('fCrit').value;
-
-        // LÓGICA PRINCIPAL: Filtrar sites que foram ruins em QUALQUER um dos 3 meses
-        const listaTrimestreUnica = dadosSites.filter(i => {
-            const v0 = converterValor(i["% " + mes0] || i[mes0]);
-            const v1 = converterValor(i["% " + mes1] || i[mes1]);
-            const v2 = converterValor(i["% " + mes2] || i[mes2]);
-
-            // Se esteve abaixo de 96 em pelo menos UM dos meses
-            const foiRuimAlgumMomento = (v0 <= 96 && v0 > 0) || (v1 <= 96 && v1 > 0) || (v2 <= 96 && v2 > 0);
-
-            if (!foiRuimAlgumMomento) return false;
-
-            // Aplica filtros de interface
+        const site = document.getElementById('fSite').value.toUpperCase();
+        const crit = document.getElementById('fCrit').value;
+        const filtrados = dadosSites.filter(i => {
             return (!ddd || i.DDD === ddd) && 
                    (!cid || (i.MUNICÍPIO === cid || i.CIDADE === cid)) && 
-                   (!siteS || (i.SITE && i.SITE.toUpperCase().includes(siteS))) && 
-                   (!critF || i["CRÍTICIDADE ATUAL"] === critF);
+                   (!site || (i.SITE && i.SITE.toUpperCase().includes(site))) && 
+                   (!crit || i["CRÍTICIDADE ATUAL"] === crit);
         });
+        renderizarTabela(filtrados);
+    }
 
-        // O total de sites únicos que sobraram no filtro vai para o card azul (ex: 187)
-        document.getElementById('countTotal').innerText = listaTrimestreUnica.length;
+    function limparFiltros() {
+        document.getElementById('fDDD').value = "";
+        document.getElementById('fCidade').value = "";
+        document.getElementById('fSite').value = "";
+        document.getElementById('fCrit').value = "";
+        filtrar();
+    }
 
-        renderizarTabela(listaTrimestreUnica);
+    function abrirVistoria(url, siteID) {
+        if (!url || url === "-" || url.trim() === "") {
+            alert(`Necessário realizar vistoria para o site ${siteID}.`);
+        } else {
+            window.open(url, '_blank');
+        }
     }
 
     function renderizarTabela(lista) {
         const corpo = document.getElementById('tabelaBody');
         corpo.innerHTML = '';
-        let contMesAtual = 0;
+        let contAbaixo = 0;
 
         lista.forEach(item => {
-            const percRaw = item["% " + mes0] || item[mes0] || "0%";
-            const percNum = converterValor(percRaw);
+            if(!item.SITE) return;
             
-            // Card Vermelho conta apenas os ruins do mês vigente (ex: 77)
-            if(percNum <= 96 && percNum > 0) contMesAtual++;
+            // Busca dinâmica pela coluna do mês atual
+            const percRaw = item["% " + mesAtualNome] || item[mesAtualNome] || "0";
+            const perc = parseFloat(percRaw.toString().replace(',', '.').replace('%', ''));
+            
+            let classe = "bg-verde";
+            let statusTexto = item["CRÍTICIDADE ATUAL"] || "OK";
 
-            let classe = percNum <= 96 ? "bg-vermelho" : (percNum < 98 ? "bg-amarelo" : "bg-verde");
-            let statusTexto = percNum <= 96 ? 'CRÍTICO' : 'OK';
-            
+            if(item["CRÍTICIDADE ATUAL"] === "CRÍTICO" || perc <= 96) {
+                classe = "bg-vermelho";
+                statusTexto = "CRÍTICO";
+            } else if(perc > 96 && perc < 98) {
+                classe = "bg-amarelo";
+                statusTexto = "ALERTA";
+            }
+            if(perc <= 96 && perc > 0) contAbaixo++;
+
             const linkVistoria = (item["VISTORIA"] || "").trim();
             const temLink = (linkVistoria !== "" && linkVistoria !== "-");
             const corBotao = temLink ? "#27ae60" : "#7f8c8d";
@@ -221,24 +223,8 @@
                 </td> 
             </tr>`; 
         });
-
-        document.getElementById('countCritico').innerText = contMesAtual;
-    }
-
-    function limparFiltros() {
-        document.getElementById('fDDD').value = "";
-        document.getElementById('fCidade').value = "";
-        document.getElementById('fSite').value = "";
-        document.getElementById('fCrit').value = "";
-        filtrar();
-    }
-
-    function abrirVistoria(url, siteID) {
-        if (!url || url === "-" || url.trim() === "") {
-            alert(`Necessário realizar vistoria para o site ${siteID}.`);
-        } else {
-            window.open(url, '_blank');
-        }
+        document.getElementById('countTotal').innerText = lista.length;
+        document.getElementById('countCritico').innerText = contAbaixo;
     }
 
     function abrirHistorico(siteID) {
