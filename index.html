@@ -12,12 +12,12 @@
         label { font-weight: bold; font-size: 13px; margin-bottom: 5px; color: #555; }
         select, input { padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
         .btn-clear { background-color: #6c757d; color: white; border: none; padding: 9px 15px; border-radius: 4px; cursor: pointer; font-weight: bold; transition: background 0.3s; height: 35px; }
-        .btn-clear:hover { background-color: #5a6268; }
         .summary { display: flex; gap: 15px; margin-bottom: 25px; }
         .card { flex: 1; padding: 15px; border-radius: 8px; text-align: center; color: white; font-weight: bold; }
         .card-total { background: #34495e; }
         .card-critico { background: #e74c3c; }
-        .card span { display: block; font-size: 28px; }
+        .card span.label-top { display: block; font-size: 14px; margin-bottom: 5px; text-transform: uppercase; }
+        .card span.valor { display: block; font-size: 32px; }
         table { width: 100%; border-collapse: collapse; margin-top: 10px; }
         th { background: #ecf0f1; padding: 12px; text-align: left; border-bottom: 2px solid #bdc3c7; }
         td { padding: 10px; border-bottom: 1px solid #eee; font-size: 14px; }
@@ -27,13 +27,10 @@
         .bg-verde { background-color: #1e8e3e !important; }
         .action-btns { display: flex; gap: 5px; }
         .btn-hist { background: #1a73e8; color: white; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; }
-        .btn-vist { color: white; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; text-decoration: none; text-align: center; transition: opacity 0.3s; }
-        .btn-vist:hover { opacity: 0.8; }
+        .btn-vist { color: white; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; text-decoration: none; text-align: center; }
         .modal { display: none; position: fixed; z-index: 100; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); overflow-y: auto; }
         .modal-content { background: white; margin: 5% auto; padding: 25px; width: 85%; border-radius: 12px; position: relative; }
         .close-btn { position: absolute; right: 20px; top: 15px; font-size: 28px; cursor: pointer; color: #999; }
-        .causa-sumario { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px; }
-        .causa-item { background: #fff; padding: 8px 15px; border: 1px solid #dee2e6; border-radius: 20px; font-size: 13px; }
     </style>
 </head>
 <body>
@@ -50,8 +47,14 @@
     </div>
 
     <div class="summary">
-        <div class="card card-total"></span>Sites último Trimestre<span><id id="countTotal" style="display: block; font-size: 32px; margin-top: 5px;">0</id></span></div>
-        <div class="card card-critico"><span id="labelMesCard">MÊS</span><id id="countCritico" style="display: block; font-size: 32px; margin-top: 5px;">0</span></div>
+        <div class="card card-total">
+            <span class="label-top">Sites último Trimestre</span>
+            <span id="countTotal" class="valor">0</span>
+        </div>
+        <div class="card card-critico">
+            <span id="labelMesCard" class="label-top">MÊS ATUAL</span>
+            <span id="countCritico" class="valor">0</span>
+        </div>
     </div>
 
     <table>
@@ -95,21 +98,27 @@
 
     let dadosSites = [];
     let dadosCausas = [];
-    let mesAtualNome = "";
+    let mes0 = "", mes1 = "", mes2 = "";
 
-    // Função para identificar o mês atual dinamicamente
-    function definirMesAtual() {
+    function definirMeses() {
         const meses = ["JANEIRO", "FEVEREIRO", "MARÇO", "ABRIL", "MAIO", "JUNHO", "JULHO", "AGOSTO", "SETEMBRO", "OUTUBRO", "NOVEMBRO", "DEZEMBRO"];
-        const dataHoje = new Date();
-        mesAtualNome = meses[dataHoje.getMonth()];
+        const hoje = new Date();
         
-        // Atualiza os textos na interface
-        document.getElementById('labelMesCard').innerText = mesAtualNome;
-        document.getElementById('labelMesTabela').innerText = "% " + mesAtualNome;
+        mes0 = meses[hoje.getMonth()];
+        mes1 = meses[(hoje.getMonth() - 1 + 12) % 12];
+        mes2 = meses[(hoje.getMonth() - 2 + 12) % 12];
+
+        document.getElementById('labelMesCard').innerText = mes0;
+        document.getElementById('labelMesTabela').innerText = "% " + mes0;
+    }
+
+    function converterValor(valor) {
+        if (!valor || valor === "-") return 100;
+        return parseFloat(valor.toString().replace(',', '.').replace('%', '')) || 0;
     }
 
     function init() {
-        definirMesAtual();
+        definirMeses();
         Papa.parse(`${urlBase}&gid=${gidPrincipal}`, {
             download: true, header: true, skipEmptyLines: true,
             complete: function(res) {
@@ -139,8 +148,6 @@
         const cidades = [...new Set(dadosSites.map(i => i.MUNICÍPIO || i.CIDADE))].filter(Boolean).sort();
         const selDDD = document.getElementById('fDDD');
         const selCid = document.getElementById('fCidade');
-        selDDD.innerHTML = '<option value="">Todos</option>';
-        selCid.innerHTML = '<option value="">Todas</option>';
         ddds.forEach(d => selDDD.add(new Option(d, d)));
         cidades.forEach(c => selCid.add(new Option(c, c)));
     }
@@ -148,114 +155,83 @@
     function filtrar() {
         const ddd = document.getElementById('fDDD').value;
         const cid = document.getElementById('fCidade').value;
-        const site = document.getElementById('fSite').value.toUpperCase();
-        const crit = document.getElementById('fCrit').value;
+        const siteS = document.getElementById('fSite').value.toUpperCase();
+        const critF = document.getElementById('fCrit').value;
+
         const filtrados = dadosSites.filter(i => {
-            return (!ddd || i.DDD === ddd) && 
+            const v0 = converterValor(i["% " + mes0] || i[mes0]);
+            const v1 = converterValor(i["% " + mes1] || i[mes1]);
+            const v2 = converterValor(i["% " + mes2] || i[mes2]);
+
+            // Só entra na lista se foi crítico em algum dos 3 meses
+            const criticoNoPeriodo = (v0 <= 96 && v0 > 0) || (v1 <= 96 && v1 > 0) || (v2 <= 96 && v2 > 0);
+
+            return criticoNoPeriodo &&
+                   (!ddd || i.DDD === ddd) && 
                    (!cid || (i.MUNICÍPIO === cid || i.CIDADE === cid)) && 
-                   (!site || (i.SITE && i.SITE.toUpperCase().includes(site))) && 
-                   (!crit || i["CRÍTICIDADE ATUAL"] === crit);
+                   (!siteS || (i.SITE && i.SITE.toUpperCase().includes(siteS))) && 
+                   (!critF || i["CRÍTICIDADE ATUAL"] === critF);
         });
         renderizarTabela(filtrados);
-    }
-
-    function limparFiltros() {
-        document.getElementById('fDDD').value = "";
-        document.getElementById('fCidade').value = "";
-        document.getElementById('fSite').value = "";
-        document.getElementById('fCrit').value = "";
-        filtrar();
-    }
-
-    function abrirVistoria(url, siteID) {
-        if (!url || url === "-" || url.trim() === "") {
-            alert(`Necessário realizar vistoria para o site ${siteID}.`);
-        } else {
-            window.open(url, '_blank');
-        }
     }
 
     function renderizarTabela(lista) {
         const corpo = document.getElementById('tabelaBody');
         corpo.innerHTML = '';
-        let contAbaixo = 0;
+        let contMesAtual = 0;
 
         lista.forEach(item => {
-            if(!item.SITE) return;
+            const vAtualRaw = item["% " + mes0] || item[mes0] || "100%";
+            const vAtualNum = converterValor(vAtualRaw);
             
-            // Busca dinâmica pela coluna do mês atual
-            const percRaw = item["% " + mesAtualNome] || item[mesAtualNome] || "0";
-            const perc = parseFloat(percRaw.toString().replace(',', '.').replace('%', ''));
-            
-            let classe = "bg-verde";
-            let statusTexto = item["CRÍTICIDADE ATUAL"] || "OK";
+            if(vAtualNum <= 96 && vAtualNum > 0) contMesAtual++;
 
-            if(item["CRÍTICIDADE ATUAL"] === "CRÍTICO" || perc <= 96) {
-                classe = "bg-vermelho";
-                statusTexto = "CRÍTICO";
-            } else if(perc > 96 && perc < 98) {
-                classe = "bg-amarelo";
-                statusTexto = "ALERTA";
-            }
-            if(perc <= 96 && perc > 0) contAbaixo++;
-
+            let classe = vAtualNum <= 96 ? "bg-vermelho" : (vAtualNum < 98 ? "bg-amarelo" : "bg-verde");
             const linkVistoria = (item["VISTORIA"] || "").trim();
             const temLink = (linkVistoria !== "" && linkVistoria !== "-");
-            const corBotao = temLink ? "#27ae60" : "#7f8c8d";
 
             corpo.innerHTML += `<tr> 
                 <td>${item.DDD || '-'}</td> 
                 <td>${item.MUNICÍPIO || item.CIDADE || '-'}</td> 
                 <td><strong>${item.SITE}</strong></td> 
-                <td>${percRaw}</td> 
-                <td><span class="status-badge ${classe}">${statusTexto}</span></td> 
+                <td>${vAtualRaw}</td> 
+                <td><span class="status-badge ${classe}">${vAtualNum <= 96 ? 'CRÍTICO' : 'OK'}</span></td> 
                 <td> 
                     <div class="action-btns"> 
                         <button class="btn-hist" onclick="abrirHistorico('${item.SITE}')">Histórico</button> 
-                        <button class="btn-vist" style="background-color: ${corBotao}" onclick="abrirVistoria('${linkVistoria}', '${item.SITE}')">Vistoria</button> 
+                        <button class="btn-vist" style="background-color: ${temLink ? '#27ae60' : '#7f8c8d'}" onclick="abrirVistoria('${linkVistoria}', '${item.SITE}')">Vistoria</button> 
                     </div> 
                 </td> 
             </tr>`; 
         });
         document.getElementById('countTotal').innerText = lista.length;
-        document.getElementById('countCritico').innerText = contAbaixo;
+        document.getElementById('countCritico').innerText = contMesAtual;
+    }
+
+    function limparFiltros() {
+        document.getElementById('fDDD').value = ""; document.getElementById('fCidade').value = "";
+        document.getElementById('fSite').value = ""; document.getElementById('fCrit').value = "";
+        filtrar();
+    }
+
+    function abrirVistoria(url, siteID) {
+        if (!url || url === "-" || url.trim() === "") alert(`Necessário realizar vistoria para o site ${siteID}.`);
+        else window.open(url, '_blank');
     }
 
     function abrirHistorico(siteID) {
         const modal = document.getElementById('modalHistorico');
         const histBody = document.getElementById('histBody');
-        const resumo = document.getElementById('resumoCausas');
-        document.getElementById('modalTitulo').innerText = `Histórico de Eventos: ${siteID}`;
-        histBody.innerHTML = '<tr><td colspan="4" style="text-align:center;">Buscando...</td></tr>';
-        resumo.innerHTML = '';
-
-        const eventos = dadosCausas.filter(e => (e.SITE || "").toString().trim().toUpperCase() === siteID.trim().toUpperCase());
-
-        if(eventos.length === 0) {
-            histBody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:red; padding:20px;">ERRO DE VÍNCULO: Não encontramos eventos para ${siteID}.</td></tr>`;
-        } else {
-            histBody.innerHTML = '';
-            const contagemCausas = {};
-            eventos.forEach(e => {
-                const data = e["DATA"] || "-";
-                const causa = e["CAUSA"] || "-";
-                const taCausa = e["TA CAUSA"] || "-";
-                const acao = e["AÇÃO REALIZADA"] || e["ACAO REALIZADA"] || "-";
-                contagemCausas[causa] = (contagemCausas[causa] || 0) + 1;
-                histBody.innerHTML += `<tr><td>${data}</td><td>${taCausa}</td><td>${causa}</td><td>${acao}</td></tr>`;
-            });
-
-            resumo.innerHTML = `<div class="causa-item" style="background:#2c3e50; color:white;"><strong>Total: ${eventos.length}</strong></div>`;
-            for (let c in contagemCausas) {
-                const p = ((contagemCausas[c] / eventos.length) * 100).toFixed(1);
-                resumo.innerHTML += `<div class="causa-item">${c}: <strong>${contagemCausas[c]} (${p}%)</strong></div>`;
-            }
-        }
+        document.getElementById('modalTitulo').innerText = `Histórico: ${siteID}`;
+        const eventos = dadosCausas.filter(e => (e.SITE || "").toString().trim().toUpperCase() === siteID.toUpperCase());
+        histBody.innerHTML = eventos.length ? '' : '<tr><td colspan="4">Sem eventos.</td></tr>';
+        eventos.forEach(e => {
+            histBody.innerHTML += `<tr><td>${e.DATA || '-'}</td><td>${e["TA CAUSA"] || '-'}</td><td>${e.CAUSA || '-'}</td><td>${e["AÇÃO REALIZADA"] || '-'}</td></tr>`;
+        });
         modal.style.display = "block";
     }
 
     function fecharModal() { document.getElementById('modalHistorico').style.display = "none"; }
-    window.onclick = function(event) { if (event.target == document.getElementById('modalHistorico')) fecharModal(); }
     window.onload = init;
 </script>
 </body>
