@@ -17,9 +17,8 @@
         .card { flex: 1; padding: 15px; border-radius: 8px; text-align: center; color: white; font-weight: bold; }
         .card-total { background: #34495e; }
         .card-critico { background: #e74c3c; }
-        .card span.label-top { display: block; font-size: 14px; margin-bottom: 5px; text-transform: uppercase; opacity: 0.9; }
-        .card span.valor { display: block; font-size: 32px; }
-        
+        .card span { display: block; font-size: 28px; }
+        .card .label-top { font-size: 14px; text-transform: uppercase; margin-bottom: 5px; }
         table { width: 100%; border-collapse: collapse; margin-top: 10px; }
         th { background: #ecf0f1; padding: 12px; text-align: left; border-bottom: 2px solid #bdc3c7; }
         td { padding: 10px; border-bottom: 1px solid #eee; font-size: 14px; }
@@ -30,27 +29,30 @@
         .action-btns { display: flex; gap: 5px; }
         .btn-hist { background: #1a73e8; color: white; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; }
         .btn-vist { color: white; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; text-decoration: none; text-align: center; transition: opacity 0.3s; }
+        .btn-vist:hover { opacity: 0.8; }
         .modal { display: none; position: fixed; z-index: 100; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); overflow-y: auto; }
         .modal-content { background: white; margin: 5% auto; padding: 25px; width: 85%; border-radius: 12px; position: relative; }
         .close-btn { position: absolute; right: 20px; top: 15px; font-size: 28px; cursor: pointer; color: #999; }
+        .causa-sumario { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px; }
+        .causa-item { background: #fff; padding: 8px 15px; border: 1px solid #dee2e6; border-radius: 20px; font-size: 13px; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h2>Análise de Bairros Críticos (Trimestre Móvel)</h2>
+    <h2>Análise de Bairros Críticos</h2>
 
     <div class="filters">
         <div class="filter-group"><label>DDD</label><select id="fDDD" onchange="filtrar()"><option value="">Todos</option></select></div>
         <div class="filter-group"><label>Cidade</label><select id="fCidade" onchange="filtrar()"><option value="">Todas</option></select></div>
         <div class="filter-group"><label>Site</label><input type="text" id="fSite" placeholder="Buscar site..." onkeyup="filtrar()"></div>
-        <div class="filter-group"><label>Criticidade Atual</label><select id="fCrit" onchange="filtrar()"><option value="">Todas</option><option value="CRÍTICO">CRÍTICO</option><option value="NÃO CRÍTICO">NÃO CRÍTICO</option></select></div>
+        <div class="filter-group"><label>Criticidade</label><select id="fCrit" onchange="filtrar()"><option value="">Todas</option><option value="CRÍTICO">CRÍTICO</option><option value="NÃO CRÍTICO">NÃO CRÍTICO</option></select></div>
         <button class="btn-clear" onclick="limparFiltros()">Limpar Filtros</button>
     </div>
 
     <div class="summary">
         <div class="card card-total">
-            <span class="label-top">Sites Únicos Críticos (Trimestre)</span>
+            <span class="label-top">Sites último Trimestre</span>
             <span id="countTotal" class="valor">0</span>
         </div>
         <div class="card card-critico">
@@ -65,8 +67,8 @@
                 <th>DDD</th>
                 <th>Cidade</th>
                 <th>Site</th>
-                <th id="labelMesTabela">% Mês Atual</th>
-                <th>Status</th>
+                <th id="labelMesTabela">% Mês</th>
+                <th>Status do Mês</th>
                 <th>Ações</th>
             </tr>
         </thead>
@@ -78,8 +80,8 @@
     <div class="modal-content">
         <span class="close-btn" onclick="fecharModal()">&times;</span>
         <h3 id="modalTitulo">Histórico do Site</h3>
-        <div id="resumoCausas" style="margin-bottom: 15px;"></div>
-        <table id="tabelaHistorico" style="width:100%">
+        <div id="resumoCausas" class="causa-sumario"></div>
+        <table id="tabelaHistorico">
             <thead>
                 <tr>
                     <th>DATA</th>
@@ -100,20 +102,21 @@
 
     let dadosSites = [];
     let dadosCausas = [];
-    let m0 = "", m1 = "", m2 = "";
+    let mes0 = "", mes1 = "", mes2 = "";
 
     function definirMeses() {
-        const nomes = ["JANEIRO", "FEVEREIRO", "MARÇO", "ABRIL", "MAIO", "JUNHO", "JULHO", "AGOSTO", "SETEMBRO", "OUTUBRO", "NOVEMBRO", "DEZEMBRO"];
-        const hoje = new Date();
-        m0 = nomes[hoje.getMonth()];
-        m1 = nomes[(hoje.getMonth() - 1 + 12) % 12];
-        m2 = nomes[(hoje.getMonth() - 2 + 12) % 12];
-
-        document.getElementById('labelMesCard').innerText = m0;
-        document.getElementById('labelMesTabela').innerText = "% " + m0;
+        const meses = ["JANEIRO", "FEVEREIRO", "MARÇO", "ABRIL", "MAIO", "JUNHO", "JULHO", "AGOSTO", "SETEMBRO", "OUTUBRO", "NOVEMBRO", "DEZEMBRO"];
+        const dataHoje = new Date();
+        
+        mes0 = meses[dataHoje.getMonth()]; // Atual
+        mes1 = meses[(dataHoje.getMonth() - 1 + 12) % 12]; // Passado
+        mes2 = meses[(dataHoje.getMonth() - 2 + 12) % 12]; // Retrasado
+        
+        document.getElementById('labelMesCard').innerText = mes0;
+        document.getElementById('labelMesTabela').innerText = "% " + mes0;
     }
 
-    function converter(valor) {
+    function converterValor(valor) {
         if (!valor || valor === "-") return 100;
         return parseFloat(valor.toString().replace(',', '.').replace('%', '')) || 0;
     }
@@ -149,35 +152,40 @@
         const cidades = [...new Set(dadosSites.map(i => i.MUNICÍPIO || i.CIDADE))].filter(Boolean).sort();
         const selDDD = document.getElementById('fDDD');
         const selCid = document.getElementById('fCidade');
+        selDDD.innerHTML = '<option value="">Todos</option>';
+        selCid.innerHTML = '<option value="">Todas</option>';
         ddds.forEach(d => selDDD.add(new Option(d, d)));
         cidades.forEach(c => selCid.add(new Option(c, c)));
     }
 
     function filtrar() {
-        const fDdd = document.getElementById('fDDD').value;
-        const fCid = document.getElementById('fCidade').value;
-        const fSite = document.getElementById('fSite').value.toUpperCase();
-        const fCrit = document.getElementById('fCrit').value;
+        const ddd = document.getElementById('fDDD').value;
+        const cid = document.getElementById('fCidade').value;
+        const siteS = document.getElementById('fSite').value.toUpperCase();
+        const critF = document.getElementById('fCrit').value;
 
-        const filtrados = dadosSites.filter(i => {
-            // Valores de performance nos 3 meses
-            const p0 = converter(i["% " + m0] || i[m0]);
-            const p1 = converter(i["% " + m1] || i[m1]);
-            const p2 = converter(i["% " + m2] || i[m2]);
+        // LÓGICA PRINCIPAL: Filtrar sites que foram ruins em QUALQUER um dos 3 meses
+        const listaTrimestreUnica = dadosSites.filter(i => {
+            const v0 = converterValor(i["% " + mes0] || i[mes0]);
+            const v1 = converterValor(i["% " + mes1] || i[mes1]);
+            const v2 = converterValor(i["% " + mes2] || i[mes2]);
 
-            // LÓGICA TRIMESTRAL: Site entra se for <= 96 em QUALQUER um dos 3 meses
-            const ehCriticoTrimestre = (p0 <= 96 && p0 > 0) || (p1 <= 96 && p1 > 0) || (p2 <= 96 && p2 > 0);
+            // Se esteve abaixo de 96 em pelo menos UM dos meses
+            const foiRuimAlgumMomento = (v0 <= 96 && v0 > 0) || (v1 <= 96 && v1 > 0) || (v2 <= 96 && v2 > 0);
 
-            if (!ehCriticoTrimestre) return false;
+            if (!foiRuimAlgumMomento) return false;
 
-            // Aplica filtros de pesquisa do usuário
-            return (!fDdd || i.DDD === fDdd) && 
-                   (!fCid || (i.MUNICÍPIO === fCid || i.CIDADE === fCid)) && 
-                   (!fSite || (i.SITE && i.SITE.toUpperCase().includes(fSite))) && 
-                   (!fCrit || i["CRÍTICIDADE ATUAL"] === fCrit);
+            // Aplica filtros de interface
+            return (!ddd || i.DDD === ddd) && 
+                   (!cid || (i.MUNICÍPIO === cid || i.CIDADE === cid)) && 
+                   (!siteS || (i.SITE && i.SITE.toUpperCase().includes(siteS))) && 
+                   (!critF || i["CRÍTICIDADE ATUAL"] === critF);
         });
 
-        renderizarTabela(filtrados);
+        // O total de sites únicos que sobraram no filtro vai para o card azul (ex: 187)
+        document.getElementById('countTotal').innerText = listaTrimestreUnica.length;
+
+        renderizarTabela(listaTrimestreUnica);
     }
 
     function renderizarTabela(lista) {
@@ -186,35 +194,35 @@
         let contMesAtual = 0;
 
         lista.forEach(item => {
-            const percRaw = item["% " + m0] || item[m0] || "0%";
-            const percNum = converter(percRaw);
+            const percRaw = item["% " + mes0] || item[mes0] || "0%";
+            const percNum = converterValor(percRaw);
             
-            // Contador para o Card Vermelho (Apenas Mês Atual)
-            if (percNum <= 96 && percNum > 0) contMesAtual++;
+            // Card Vermelho conta apenas os ruins do mês vigente (ex: 77)
+            if(percNum <= 96 && percNum > 0) contMesAtual++;
 
             let classe = percNum <= 96 ? "bg-vermelho" : (percNum < 98 ? "bg-amarelo" : "bg-verde");
-            let statusTexto = percNum <= 96 ? "CRÍTICO" : "OK";
-
+            let statusTexto = percNum <= 96 ? 'CRÍTICO' : 'OK';
+            
             const linkVistoria = (item["VISTORIA"] || "").trim();
             const temLink = (linkVistoria !== "" && linkVistoria !== "-");
+            const corBotao = temLink ? "#27ae60" : "#7f8c8d";
 
-            corpo.innerHTML += `<tr>
-                <td>${item.DDD || '-'}</td>
-                <td>${item.MUNICÍPIO || item.CIDADE || '-'}</td>
-                <td><strong>${item.SITE}</strong></td>
-                <td>${percRaw}</td>
-                <td><span class="status-badge ${classe}">${statusTexto}</span></td>
-                <td>
-                    <div class="action-btns">
-                        <button class="btn-hist" onclick="abrirHistorico('${item.SITE}')">Histórico</button>
-                        <button class="btn-vist" style="background-color: ${temLink ? '#27ae60' : '#7f8c8d'}" onclick="abrirVistoria('${linkVistoria}', '${item.SITE}')">Vistoria</button>
-                    </div>
-                </td>
-            </tr>`;
+            corpo.innerHTML += `<tr> 
+                <td>${item.DDD || '-'}</td> 
+                <td>${item.MUNICÍPIO || item.CIDADE || '-'}</td> 
+                <td><strong>${item.SITE}</strong></td> 
+                <td>${percRaw}</td> 
+                <td><span class="status-badge ${classe}">${statusTexto}</span></td> 
+                <td> 
+                    <div class="action-btns"> 
+                        <button class="btn-hist" onclick="abrirHistorico('${item.SITE}')">Histórico</button> 
+                        <button class="btn-vist" style="background-color: ${corBotao}" onclick="abrirVistoria('${linkVistoria}', '${item.SITE}')">Vistoria</button> 
+                    </div> 
+                </td> 
+            </tr>`; 
         });
 
-        document.getElementById('countTotal').innerText = lista.length; // Soma total de sites filtrados (únicos)
-        document.getElementById('countCritico').innerText = contMesAtual; // Soma apenas do mês atual
+        document.getElementById('countCritico').innerText = contMesAtual;
     }
 
     function limparFiltros() {
@@ -226,21 +234,43 @@
     }
 
     function abrirVistoria(url, siteID) {
-        if (!url || url === "-" || url.trim() === "") alert(`Vistoria pendente para ${siteID}.`);
-        else window.open(url, '_blank');
+        if (!url || url === "-" || url.trim() === "") {
+            alert(`Necessário realizar vistoria para o site ${siteID}.`);
+        } else {
+            window.open(url, '_blank');
+        }
     }
 
     function abrirHistorico(siteID) {
         const modal = document.getElementById('modalHistorico');
         const histBody = document.getElementById('histBody');
-        document.getElementById('modalTitulo').innerText = `Histórico: ${siteID}`;
-        
-        const eventos = dadosCausas.filter(e => (e.SITE || "").toString().toUpperCase() === siteID.toUpperCase());
-        histBody.innerHTML = eventos.length ? '' : '<tr><td colspan="4" style="text-align:center;">Sem registros.</td></tr>';
-        
-        eventos.forEach(e => {
-            histBody.innerHTML += `<tr><td>${e.DATA || '-'}</td><td>${e["TA CAUSA"] || '-'}</td><td>${e.CAUSA || '-'}</td><td>${e["AÇÃO REALIZADA"] || '-'}</td></tr>`;
-        });
+        const resumo = document.getElementById('resumoCausas');
+        document.getElementById('modalTitulo').innerText = `Histórico de Eventos: ${siteID}`;
+        histBody.innerHTML = '<tr><td colspan="4" style="text-align:center;">Buscando...</td></tr>';
+        resumo.innerHTML = '';
+
+        const eventos = dadosCausas.filter(e => (e.SITE || "").toString().trim().toUpperCase() === siteID.trim().toUpperCase());
+
+        if(eventos.length === 0) {
+            histBody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:red; padding:20px;">ERRO DE VÍNCULO: Não encontramos eventos para ${siteID}.</td></tr>`;
+        } else {
+            histBody.innerHTML = '';
+            const contagemCausas = {};
+            eventos.forEach(e => {
+                const data = e["DATA"] || "-";
+                const causa = e["CAUSA"] || "-";
+                const taCausa = e["TA CAUSA"] || "-";
+                const acao = e["AÇÃO REALIZADA"] || e["ACAO REALIZADA"] || "-";
+                contagemCausas[causa] = (contagemCausas[causa] || 0) + 1;
+                histBody.innerHTML += `<tr><td>${data}</td><td>${taCausa}</td><td>${causa}</td><td>${acao}</td></tr>`;
+            });
+
+            resumo.innerHTML = `<div class="causa-item" style="background:#2c3e50; color:white;"><strong>Total: ${eventos.length}</strong></div>`;
+            for (let c in contagemCausas) {
+                const p = ((contagemCausas[c] / eventos.length) * 100).toFixed(1);
+                resumo.innerHTML += `<div class="causa-item">${c}: <strong>${contagemCausas[c]} (${p}%)</strong></div>`;
+            }
+        }
         modal.style.display = "block";
     }
 
