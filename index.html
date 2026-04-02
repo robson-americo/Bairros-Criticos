@@ -96,16 +96,24 @@
     let dadosSites = [];
     let dadosCausas = [];
     let mesAtualNome = "";
+    let mesRemoverNome = "";
 
-    // Função para identificar o mês atual dinamicamente
     function definirMesAtual() {
         const meses = ["JANEIRO", "FEVEREIRO", "MARÇO", "ABRIL", "MAIO", "JUNHO", "JULHO", "AGOSTO", "SETEMBRO", "OUTUBRO", "NOVEMBRO", "DEZEMBRO"];
         const dataHoje = new Date();
-        mesAtualNome = meses[dataHoje.getMonth()];
+        const mesAtualIndex = dataHoje.getMonth();
         
-        // Atualiza os textos na interface
+        mesAtualNome = meses[mesAtualIndex];
+        
+        // Calcula o 3º mês anterior (ex: Abril (3) - 3 = Janeiro (0))
+        const mesRemoverIndex = (mesAtualIndex - 3 + 12) % 12;
+        mesRemoverNome = meses[mesRemoverIndex];
+
         document.getElementById('labelMesCard').innerText = mesAtualNome;
         document.getElementById('labelMesTabela').innerText = "% " + mesAtualNome;
+        
+        console.log("Mês Atual:", mesAtualNome);
+        console.log("Mês removido da consulta:", mesRemoverNome);
     }
 
     function init() {
@@ -125,11 +133,18 @@
         Papa.parse(`${urlBase}&gid=${gidCausas}`, {
             download: true, header: true, skipEmptyLines: true,
             complete: function(res) { 
-                dadosCausas = res.data.map(row => {
-                    let newRow = {};
-                    Object.keys(row).forEach(k => newRow[k.trim().toUpperCase()] = row[k]);
-                    return newRow;
-                });
+                // Filtra as causas removendo o 3º mês anterior antes de salvar na variável global
+                dadosCausas = res.data
+                    .map(row => {
+                        let newRow = {};
+                        Object.keys(row).forEach(k => newRow[k.trim().toUpperCase()] = row[k]);
+                        return newRow;
+                    })
+                    .filter(evento => {
+                        // Assume que a coluna DATA contém o nome do mês ou a data formatada
+                        const dataEvento = (evento["DATA"] || "").toUpperCase();
+                        return !dataEvento.includes(mesRemoverNome);
+                    });
             }
         });
     }
@@ -182,8 +197,6 @@
 
         lista.forEach(item => {
             if(!item.SITE) return;
-            
-            // Busca dinâmica pela coluna do mês atual
             const percRaw = item["% " + mesAtualNome] || item[mesAtualNome] || "0";
             const perc = parseFloat(percRaw.toString().replace(',', '.').replace('%', ''));
             
@@ -225,14 +238,14 @@
         const modal = document.getElementById('modalHistorico');
         const histBody = document.getElementById('histBody');
         const resumo = document.getElementById('resumoCausas');
-        document.getElementById('modalTitulo').innerText = `Histórico de Eventos: ${siteID}`;
+        document.getElementById('modalTitulo').innerText = `Histórico de Eventos (Excluindo ${mesRemoverNome}): ${siteID}`;
         histBody.innerHTML = '<tr><td colspan="4" style="text-align:center;">Buscando...</td></tr>';
         resumo.innerHTML = '';
 
         const eventos = dadosCausas.filter(e => (e.SITE || "").toString().trim().toUpperCase() === siteID.trim().toUpperCase());
 
         if(eventos.length === 0) {
-            histBody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:red; padding:20px;">ERRO DE VÍNCULO: Não encontramos eventos para ${siteID}.</td></tr>`;
+            histBody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:red; padding:20px;">Sem eventos registrados para ${siteID} no período consultado.</td></tr>`;
         } else {
             histBody.innerHTML = '';
             const contagemCausas = {};
