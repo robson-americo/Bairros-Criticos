@@ -159,6 +159,15 @@
         filtrar();
     }
 
+    // Função para tratar o clique no botão de vistoria
+    function abrirVistoria(url, siteID) {
+        if (!url || url === "-" || url.trim() === "") {
+            alert(`Necessário realizar vistoria para o site ${siteID}.`);
+        } else {
+            window.open(url, '_blank');
+        }
+    }
+
     function renderizarTabela(lista) {
         const corpo = document.getElementById('tabelaBody');
         corpo.innerHTML = '';
@@ -180,60 +189,9 @@
             }
             if(perc <= 96 && perc > 0) contAbaixo++;
 
-            const linkVistoria = `https://seulink.com/vistoria?site=${item.SITE}`;
+            // Busca o link na coluna VISTORIA da planilha principal
+            const linkVistoria = item["VISTORIA"] || "";
 
             corpo.innerHTML += `<tr>
                 <td>${item.DDD || '-'}</td>
-                <td>${item.MUNICÍPIO || item.CIDADE || '-'}</td>
-                <td><strong>${item.SITE}</strong></td>
-                <td>${percRaw}</td>
-                <td><span class="status-badge ${classe}">${statusTexto}</span></td>
-                <td>
-                    <div class="action-btns">
-                        <button class="btn-hist" onclick="abrirHistorico('${item.SITE}')">Histórico</button>
-                        <a href="${linkVistoria}" target="_blank" class="btn-vist">Vistoriar</a>
-                    </div>
-                </td>
-            </tr>`;
-        });
-        document.getElementById('countTotal').innerText = lista.length;
-        document.getElementById('countCritico').innerText = contAbaixo;
-    }
-
-    function abrirHistorico(siteID) {
-        const modal = document.getElementById('modalHistorico');
-        const histBody = document.getElementById('histBody');
-        const resumo = document.getElementById('resumoCausas');
-        document.getElementById('modalTitulo').innerText = `Histórico de Eventos: ${siteID}`;
-        histBody.innerHTML = '<tr><td colspan="4" style="text-align:center;">Buscando...</td></tr>';
-        resumo.innerHTML = '';
-        const eventos = dadosCausas.filter(e => (e.SITE || "").toString().trim().toUpperCase() === siteID.trim().toUpperCase());
-
-        if(eventos.length === 0) {
-            histBody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:red; padding:20px;">ERRO DE VÍNCULO: Não encontramos eventos para ${siteID}.</td></tr>`;
-        } else {
-            histBody.innerHTML = '';
-            const contagemCausas = {};
-            eventos.forEach(e => {
-                const data = e["DATA"] || "-";
-                const causa = e["CAUSA"] || "-";
-                const taCausa = e["TA CAUSA"] || "-";
-                const acao = e["AÇÃO REALIZADA"] || e["ACAO REALIZADA"] || "-";
-                contagemCausas[causa] = (contagemCausas[causa] || 0) + 1;
-                histBody.innerHTML += `<tr><td>${data}</td><td>${taCausa}</td><td>${causa}</td><td>${acao}</td></tr>`;
-            });
-            resumo.innerHTML = `<div class="causa-item" style="background:#2c3e50; color:white;"><strong>Total: ${eventos.length}</strong></div>`;
-            for (let c in contagemCausas) {
-                const p = ((contagemCausas[c] / eventos.length) * 100).toFixed(1);
-                resumo.innerHTML += `<div class="causa-item">${c}: <strong>${contagemCausas[c]} (${p}%)</strong></div>`;
-            }
-        }
-        modal.style.display = "block";
-    }
-
-    function fecharModal() { document.getElementById('modalHistorico').style.display = "none"; }
-    window.onclick = function(event) { if (event.target == document.getElementById('modalHistorico')) fecharModal(); }
-    window.onload = init;
-</script>
-</body>
-</html>
+                <td>${item.MUNICÍPIO || item.CIDADE ||
