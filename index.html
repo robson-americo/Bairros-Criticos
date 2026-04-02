@@ -2,57 +2,60 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>Dashboard Bairros Críticos</title>
+    <title>Painel de Controle - Bairros Críticos</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 20px; background-color: #f0f2f5; }
-        .container { max-width: 1200px; margin: auto; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
-        h2 { color: #1a73e8; border-bottom: 2px solid #e8f0fe; padding-bottom: 10px; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; margin: 20px; background-color: #f4f4f9; }
+        .container { max-width: 1300px; margin: auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
         
-        .filters { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-bottom: 25px; background: #f8f9fa; padding: 15px; border-radius: 8px; }
-        .filter-group { display: flex; flex-direction: column; }
-        label { font-size: 12px; font-weight: bold; color: #5f6368; margin-bottom: 5px; }
-        select, input { padding: 10px; border: 1px solid #dadce0; border-radius: 6px; outline: none; }
-        
-        .summary { display: flex; gap: 20px; margin-bottom: 25px; }
-        .card { flex: 1; background: #fff; border: 1px solid #e0e0e0; padding: 20px; border-radius: 8px; text-align: center; border-top: 4px solid #1a73e8; }
-        .card.alert { border-top-color: #d93025; }
-        .card span { display: block; font-size: 28px; font-weight: bold; margin-top: 10px; }
+        h2 { color: #2c3e50; text-align: center; margin-bottom: 30px; }
 
-        table { width: 100%; border-collapse: collapse; background: white; }
-        th { background-color: #f8f9fa; color: #5f6368; font-weight: 600; text-transform: uppercase; font-size: 12px; padding: 12px; border-bottom: 2px solid #eee; text-align: left; }
-        td { padding: 12px; border-bottom: 1px solid #eee; font-size: 14px; color: #3c4043; }
-        tr:hover { background-color: #f1f3f4; }
+        .filters { display: flex; flex-wrap: wrap; gap: 15px; margin-bottom: 25px; background: #fff; border: 1px solid #ddd; padding: 15px; border-radius: 8px; }
+        .filter-group { flex: 1; min-width: 200px; display: flex; flex-direction: column; }
+        label { font-weight: bold; font-size: 13px; margin-bottom: 5px; color: #555; }
+        select, input { padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
 
-        .btn-history { background: #1a73e8; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px; }
-        .btn-history:hover { background: #1557b0; }
-        
-        #loading { text-align: center; color: #666; padding: 20px; }
+        .summary { display: flex; gap: 15px; margin-bottom: 25px; }
+        .card { flex: 1; padding: 20px; border-radius: 8px; text-align: center; color: white; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .card-total { background: #34495e; }
+        .card-critico { background: #e74c3c; }
+        .card span { display: block; font-size: 32px; margin-top: 5px; }
+
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; background: white; }
+        th { background: #ecf0f1; padding: 12px; text-align: left; border-bottom: 2px solid #bdc3c7; color: #2c3e50; }
+        td { padding: 10px; border-bottom: 1px solid #eee; font-size: 14px; }
+
+        /* Estilos do Status (Semáforo) */
+        .status-badge { padding: 5px 10px; border-radius: 15px; font-size: 11px; font-weight: bold; color: white; text-transform: uppercase; display: inline-block; min-width: 80px; text-align: center; }
+        .bg-vermelho { background-color: #e74c3c; } /* Crítico */
+        .bg-amarelo { background-color: #f1c40f; color: #2c3e50; } /* Alerta */
+        .bg-verde { background-color: #27ae60; } /* OK / Não Crítico */
+
+        .btn-hist { background: #3498db; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; }
+        .btn-hist:hover { background: #2980b9; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h2>Consulta de Bairros Críticos</h2>
-
-    <div id="loading">Carregando dados da planilha...</div>
+    <h2>Análise de Bairros Críticos</h2>
 
     <div class="filters">
         <div class="filter-group">
             <label>DDD</label>
-            <select id="filterDDD" onchange="applyFilters()"><option value="">Todos</option></select>
+            <select id="fDDD" onchange="filtrar()"><option value="">Todos</option></select>
         </div>
         <div class="filter-group">
             <label>Cidade</label>
-            <select id="filterCidade" onchange="applyFilters()"><option value="">Todas</option></select>
+            <select id="fCidade" onchange="filtrar()"><option value="">Todas</option></select>
         </div>
         <div class="filter-group">
-            <label>Site</label>
-            <input type="text" id="filterSite" placeholder="Ex: RJ..." onkeyup="applyFilters()">
+            <label>Site (Busca)</label>
+            <input type="text" id="fSite" placeholder="Digite o site..." onkeyup="filtrar()">
         </div>
         <div class="filter-group">
             <label>Criticidade</label>
-            <select id="filterCrit" onchange="applyFilters()">
+            <select id="fCrit" onchange="filtrar()">
                 <option value="">Todas</option>
                 <option value="CRÍTICO">CRÍTICO</option>
                 <option value="NÃO CRÍTICO">NÃO CRÍTICO</option>
@@ -61,124 +64,119 @@
     </div>
 
     <div class="summary">
-        <div class="card">Total de Sites Listados<span id="totalSites">0</span></div>
-        <div class="card alert">Sites < 96% (Março)<span id="totalLow">0</span></div>
+        <div class="card card-total">Total de Sites<span><id id="countTotal">0</id></span></div>
+        <div class="card card-critico">Sites < 96% (Mês Atual)<span><id id="countCritico">0</id></span></div>
     </div>
 
-    <table id="dataTable">
+    <table>
         <thead>
             <tr>
                 <th>DDD</th>
-                <th>Município</th>
+                <th>Cidade</th>
                 <th>Site</th>
                 <th>% Março</th>
-                <th>Status</th>
+                <th>Status / Criticidade</th>
                 <th>Ação</th>
             </tr>
         </thead>
-        <tbody id="tableBody"></tbody>
+        <tbody id="tabelaBody"></tbody>
     </table>
 </div>
 
 <script>
-    // Link direto para o CSV da aba específica (gid 669721322)
-    const sheetUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vR-3nl-LoJW7XThg1nyC2ngjbOZwFah_I0i3Vn-92jUUmC-TfFq_KgX15WtXr4ZKh8F34WjrPEEbdVK/pub?output=csv";
-    let allData = [];
+    const csvUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vR-3nl-LoJW7XThg1nyC2ngjbOZwFah_I0i3Vn-92jUUmC-TfFq_KgX15WtXr4ZKh8F34WjrPEEbdVK/pub?output=csv";
+    let dadosOriginais = [];
+
+    // Função para limpar números da planilha (ex: "95,50%" vira 95.5)
+    function limparNumero(valor) {
+        if (!valor) return 0;
+        return parseFloat(valor.toString().replace('%', '').replace(',', '.').trim()) || 0;
+    }
 
     function init() {
-        Papa.parse(sheetUrl, {
+        Papa.parse(csvUrl, {
             download: true,
             header: true,
             skipEmptyLines: true,
-            complete: function(results) {
-                // Limpeza: remove espaços em branco dos nomes das colunas
-                allData = results.data.map(row => {
-                    const newRow = {};
-                    Object.keys(row).forEach(key => {
-                        newRow[key.trim()] = row[key].trim();
-                    });
-                    return newRow;
-                });
-                
-                document.getElementById('loading').style.display = 'none';
-                populateFilters();
-                applyFilters();
-            },
-            error: function(err) {
-                document.getElementById('loading').innerHTML = "Erro ao carregar dados. Verifique se a planilha está 'Publicada na Web'.";
-                console.error(err);
+            complete: function(res) {
+                dadosOriginais = res.data;
+                popularFiltros();
+                filtrar();
             }
         });
     }
 
-    function populateFilters() {
-        const dddSet = new Set();
-        const cidadeSet = new Set();
+    function popularFiltros() {
+        const ddds = [...new Set(dadosOriginais.map(i => i.DDD))].sort();
+        const cidades = [...new Set(dadosOriginais.map(i => i.Município))].sort();
+        
+        const selDDD = document.getElementById('fDDD');
+        const selCid = document.getElementById('fCidade');
 
-        allData.forEach(item => {
-            if(item.DDD) dddSet.add(item.DDD);
-            if(item.Município) cidadeSet.add(item.Município);
-        });
-
-        const dddSelect = document.getElementById('filterDDD');
-        [...dddSet].sort().forEach(ddd => dddSelect.add(new Option(ddd, ddd)));
-
-        const cidadeSelect = document.getElementById('filterCidade');
-        [...cidadeSet].sort().forEach(cid => cidadeSelect.add(new Option(cid, cid)));
+        ddds.forEach(d => { if(d) selDDD.add(new Option(d, d)) });
+        cidades.forEach(c => { if(c) selCid.add(new Option(c, c)) });
     }
 
-    function applyFilters() {
-        const ddd = document.getElementById('filterDDD').value;
-        const cidade = document.getElementById('filterCidade').value;
-        const site = document.getElementById('filterSite').value.toUpperCase();
-        const crit = document.getElementById('filterCrit').value;
+    function filtrar() {
+        const ddd = document.getElementById('fDDD').value;
+        const cid = document.getElementById('fCidade').value;
+        const site = document.getElementById('fSite').value.toUpperCase();
+        const crit = document.getElementById('fCrit').value;
 
-        const filtered = allData.filter(item => {
-            const matchDDD = !ddd || item.DDD === ddd;
-            const matchCidade = !cidade || item.Município === cidade;
-            const matchSite = !site || (item.SITE && item.SITE.toUpperCase().includes(site));
-            const matchCrit = !crit || item["Críticidade Atual"] === crit;
-            return matchDDD && matchCidade && matchSite && matchCrit;
+        const filtrados = dadosOriginais.filter(i => {
+            return (!ddd || i.DDD === ddd) &&
+                   (!cid || i.Município === cid) &&
+                   (!site || i.SITE.toUpperCase().includes(site)) &&
+                   (!crit || i["Críticidade Atual"] === crit);
         });
 
-        renderTable(filtered);
+        exibirTabela(filtrados);
     }
 
-    function renderTable(data) {
-        const tbody = document.getElementById('tableBody');
-        tbody.innerHTML = '';
-        let lowCount = 0;
+    function exibirTabela(lista) {
+        const corpo = document.getElementById('tabelaBody');
+        corpo.innerHTML = '';
+        let abaixo96 = 0;
 
-        data.forEach(item => {
-            if (!item.SITE) return;
+        lista.forEach(item => {
+            if(!item.SITE) return;
 
-            // Tratamento da porcentagem (converte "95,50%" para número 95.5)
-            const valorMarçoStr = item.MARÇO ? item.MARÇO.replace('%', '').replace(',', '.') : "0";
-            const percAtual = parseFloat(valorMarçoStr);
-            
-            if (percAtual < 96) lowCount++;
+            // Busca a coluna de Março independente de como esteja escrita
+            const valorMarçoRaw = item["% Março"] || item["MARÇO"] || item["Março"] || "0";
+            const numMarço = limparNumero(valorMarçoRaw);
 
-            const row = `<tr>
-                <td>${item.DDD || '-'}</td>
-                <td>${item.Município || '-'}</td>
+            // Contabiliza se for menor que 96%
+            if (numMarço < 96 && numMarço > 0) abaixo96++;
+
+            // Define a cor do Status (Semáforo)
+            let classeCor = "bg-verde";
+            let labelStatus = item["Críticidade Atual"] || "OK";
+
+            if (labelStatus === "CRÍTICO" || numMarço < 94) {
+                classeCor = "bg-vermelho";
+            } else if (numMarço >= 94 && numMarço < 96) {
+                classeCor = "bg-amarelo";
+                labelStatus = "ALERTA";
+            } else if (labelStatus === "NÃO CRÍTICO") {
+                classeCor = "bg-verde";
+            }
+
+            const tr = `<tr>
+                <td>${item.DDD}</td>
+                <td>${item.Município}</td>
                 <td><strong>${item.SITE}</strong></td>
-                <td>${item.MARÇO || '0%'}</td>
-                <td>${item["Críticidade Atual"] || '-'}</td>
-                <td><button class="btn-history" onclick="verHistorico('${item.SITE}')">Histórico</button></td>
+                <td>${valorMarçoRaw}</td>
+                <td><span class="status-badge ${classeCor}">${labelStatus}</span></td>
+                <td><button class="btn-hist" onclick="alert('Histórico do site ${item.SITE}')">Histórico</button></td>
             </tr>`;
-            tbody.innerHTML += row;
+            corpo.innerHTML += tr;
         });
 
-        document.getElementById('totalSites').innerText = data.length;
-        document.getElementById('totalLow').innerText = lowCount;
-    }
-
-    function verHistorico(siteId) {
-        alert("Consultando histórico do site: " + siteId);
+        document.getElementById('countTotal').innerText = lista.length;
+        document.getElementById('countCritico').innerText = abaixo96;
     }
 
     window.onload = init;
 </script>
-
 </body>
 </html>
