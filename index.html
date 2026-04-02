@@ -7,27 +7,33 @@
     <style>
         body { font-family: 'Segoe UI', Arial, sans-serif; margin: 20px; background-color: #f4f4f9; color: #333; }
         .container { max-width: 1300px; margin: auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+        
         .filters { display: flex; flex-wrap: wrap; gap: 15px; margin-bottom: 25px; background: #fff; border: 1px solid #ddd; padding: 15px; border-radius: 8px; align-items: flex-end; }
         .filter-group { flex: 1; min-width: 180px; display: flex; flex-direction: column; }
         label { font-weight: bold; font-size: 13px; margin-bottom: 5px; color: #555; }
         select, input { padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
         .btn-clear { background-color: #6c757d; color: white; border: none; padding: 9px 15px; border-radius: 4px; cursor: pointer; font-weight: bold; height: 35px; }
+
         .summary { display: flex; gap: 15px; margin-bottom: 25px; }
         .card { flex: 1; padding: 15px; border-radius: 8px; text-align: center; color: white; font-weight: bold; }
         .card-total { background: #34495e; }
         .card-critico { background: #e74c3c; }
         .card span.label-top { display: block; font-size: 14px; margin-bottom: 5px; text-transform: uppercase; }
         .card span.valor { display: block; font-size: 32px; }
+
         table { width: 100%; border-collapse: collapse; margin-top: 10px; }
         th { background: #ecf0f1; padding: 12px; text-align: left; border-bottom: 2px solid #bdc3c7; font-size: 13px; }
         td { padding: 10px; border-bottom: 1px solid #eee; font-size: 14px; }
+        
         .status-badge { padding: 6px 12px; border-radius: 20px; font-size: 11px; color: white !important; font-weight: bold; text-transform: uppercase; display: inline-block; min-width: 90px; text-align: center; }
         .bg-vermelho { background-color: #d93025 !important; }
         .bg-amarelo { background-color: #f9ab00 !important; color: #3c4043 !important; }
         .bg-verde { background-color: #1e8e3e !important; }
+
         .action-btns { display: flex; gap: 5px; }
         .btn-hist, .btn-vist { color: white; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; text-decoration: none; }
         .btn-hist { background: #1a73e8; }
+
         .modal { display: none; position: fixed; z-index: 100; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); overflow-y: auto; }
         .modal-content { background: white; margin: 5% auto; padding: 25px; width: 85%; border-radius: 12px; position: relative; }
         .close-btn { position: absolute; right: 20px; top: 15px; font-size: 28px; cursor: pointer; color: #999; }
@@ -103,9 +109,9 @@
         const meses = ["JANEIRO", "FEVEREIRO", "MARÇO", "ABRIL", "MAIO", "JUNHO", "JULHO", "AGOSTO", "SETEMBRO", "OUTUBRO", "NOVEMBRO", "DEZEMBRO"];
         const hoje = new Date();
         
-        mes0 = meses[hoje.getMonth()]; // Atual
-        mes1 = meses[(hoje.getMonth() - 1 + 12) % 12]; // Anterior
-        mes2 = meses[(hoje.getMonth() - 2 + 12) % 12]; // Retrasado
+        mes0 = meses[hoje.getMonth()];
+        mes1 = meses[(hoje.getMonth() - 1 + 12) % 12];
+        mes2 = meses[(hoje.getMonth() - 2 + 12) % 12];
 
         document.getElementById('labelMesCard').innerText = mes0;
         document.getElementById('labelMesTabela').innerText = "% " + mes0;
@@ -118,7 +124,6 @@
 
     function init() {
         definirMeses();
-        // Carrega Dados Principais
         Papa.parse(`${urlBase}&gid=${gidPrincipal}`, {
             download: true, header: true, skipEmptyLines: true,
             complete: function(res) {
@@ -131,7 +136,6 @@
                 filtrar();
             }
         });
-        // Carrega Histórico/Causas
         Papa.parse(`${urlBase}&gid=${gidCausas}`, {
             download: true, header: true, skipEmptyLines: true,
             complete: function(res) { 
@@ -159,21 +163,22 @@
         const siteS = document.getElementById('fSite').value.toUpperCase();
         const critF = document.getElementById('fCrit').value;
 
-        // Regra do Card Azul: Soma de sites ÚNICOS que foram ruins no trimestre
+        // FILTRO GLOBAL: Sites que foram ruins (<=96) em qualquer mês do trimestre móvel
         const filtrados = dadosSites.filter(i => {
             const v0 = converterValor(i["% " + mes0] || i[mes0]);
             const v1 = converterValor(i["% " + mes1] || i[mes1]);
             const v2 = converterValor(i["% " + mes2] || i[mes2]);
 
-            const foiRuimNoTrimestre = (v0 <= 96 && v0 > 0) || (v1 <= 96 && v1 > 0) || (v2 <= 96 && v2 > 0);
+            const ruimTrimestre = (v0 <= 96 && v0 > 0) || (v1 <= 96 && v1 > 0) || (v2 <= 96 && v2 > 0);
 
-            return foiRuimNoTrimestre &&
+            return ruimTrimestre &&
                    (!ddd || i.DDD === ddd) && 
                    (!cid || (i.MUNICÍPIO === cid || i.CIDADE === cid)) && 
                    (!siteS || (i.SITE && i.SITE.toUpperCase().includes(siteS))) && 
                    (!critF || i["CRÍTICIDADE ATUAL"] === critF);
         });
 
+        // Atualiza o Card Azul com a soma de sites únicos filtrados
         document.getElementById('countTotal').innerText = filtrados.length;
         renderizarTabela(filtrados);
     }
@@ -187,7 +192,7 @@
             const vAtualRaw = item["% " + mes0] || item[mes0] || "100%";
             const vAtualNum = converterValor(vAtualRaw);
             
-            // Regra do Card Vermelho: Apenas Mês Atual
+            // Regra do Card Vermelho: Conta apenas se estiver ruim no mês ATUAL
             if(vAtualNum <= 96 && vAtualNum > 0) contMesAtual++;
 
             let classe = vAtualNum <= 96 ? "bg-vermelho" : (vAtualNum < 98 ? "bg-amarelo" : "bg-verde");
@@ -227,7 +232,7 @@
         const histBody = document.getElementById('histBody');
         document.getElementById('modalTitulo').innerText = `Histórico: ${siteID}`;
         const eventos = dadosCausas.filter(e => (e.SITE || "").toString().trim().toUpperCase() === siteID.toUpperCase());
-        histBody.innerHTML = eventos.length ? '' : '<tr><td colspan="4">Sem eventos.</td></tr>';
+        histBody.innerHTML = eventos.length ? '' : '<tr><td colspan="4">Sem eventos encontrados para este site.</td></tr>';
         eventos.forEach(e => {
             histBody.innerHTML += `<tr><td>${e.DATA || '-'}</td><td>${e["TA CAUSA"] || '-'}</td><td>${e.CAUSA || '-'}</td><td>${e["AÇÃO REALIZADA"] || '-'}</td></tr>`;
         });
