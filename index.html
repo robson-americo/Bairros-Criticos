@@ -29,7 +29,7 @@
         th { background: #ecf0f1; padding: 12px; text-align: left; border-bottom: 2px solid #bdc3c7; }
         td { padding: 10px; border-bottom: 1px solid #eee; font-size: 14px; }
 
-        /* Status Badges (Semáforo) */
+        /* Status Badges */
         .status-badge { padding: 6px 12px; border-radius: 20px; font-size: 11px; color: white !important; font-weight: bold; text-transform: uppercase; display: inline-block; min-width: 90px; text-align: center; }
         .bg-vermelho { background-color: #d93025 !important; }
         .bg-amarelo { background-color: #f9ab00 !important; color: #3c4043 !important; }
@@ -38,8 +38,8 @@
         /* Botões de Ação */
         .action-btns { display: flex; gap: 5px; }
         .btn-hist { background: #1a73e8; color: white; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; }
-        .btn-vist { background: #27ae60; color: white; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; text-decoration: none; text-align: center; }
-        .btn-vist:hover { background: #219150; }
+        .btn-vist { background: #7f8c8d; color: white; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; text-decoration: none; text-align: center; transition: background 0.3s; }
+        .btn-vist:hover { background: #636e72; }
 
         /* Modal */
         .modal { display: none; position: fixed; z-index: 100; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); overflow-y: auto; }
@@ -131,10 +131,8 @@
         const cidades = [...new Set(dadosSites.map(i => i.MUNICÍPIO || i.CIDADE))].filter(Boolean).sort();
         const selDDD = document.getElementById('fDDD');
         const selCid = document.getElementById('fCidade');
-        
         selDDD.innerHTML = '<option value="">Todos</option>';
         selCid.innerHTML = '<option value="">Todas</option>';
-
         ddds.forEach(d => selDDD.add(new Option(d, d)));
         cidades.forEach(c => selCid.add(new Option(c, c)));
     }
@@ -144,7 +142,6 @@
         const cid = document.getElementById('fCidade').value;
         const site = document.getElementById('fSite').value.toUpperCase();
         const crit = document.getElementById('fCrit').value;
-
         const filtrados = dadosSites.filter(i => {
             return (!ddd || i.DDD === ddd) &&
                    (!cid || (i.MUNICÍPIO === cid || i.CIDADE === cid)) &&
@@ -171,7 +168,6 @@
             if(!item.SITE) return;
             const percRaw = item["% MARÇO"] || item["MARÇO"] || "0";
             const perc = parseFloat(percRaw.replace(',', '.').replace('%', ''));
-            
             let classe = "bg-verde";
             let statusTexto = item["CRÍTICIDADE ATUAL"] || "OK";
 
@@ -182,10 +178,8 @@
                 classe = "bg-amarelo";
                 statusTexto = "ALERTA";
             }
-
             if(perc <= 96 && perc > 0) contAbaixo++;
 
-            // CONFIGURAÇÃO DO LINK DE VISTORIA AQUI:
             const linkVistoria = `https://seulink.com/vistoria?site=${item.SITE}`;
 
             corpo.innerHTML += `<tr>
@@ -210,37 +204,24 @@
         const modal = document.getElementById('modalHistorico');
         const histBody = document.getElementById('histBody');
         const resumo = document.getElementById('resumoCausas');
-        
         document.getElementById('modalTitulo').innerText = `Histórico de Eventos: ${siteID}`;
         histBody.innerHTML = '<tr><td colspan="4" style="text-align:center;">Buscando...</td></tr>';
         resumo.innerHTML = '';
-
         const eventos = dadosCausas.filter(e => (e.SITE || "").toString().trim().toUpperCase() === siteID.trim().toUpperCase());
 
         if(eventos.length === 0) {
-            histBody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:red; padding:20px;">
-                ERRO DE VÍNCULO:<br>
-                Não encontramos o site <strong>${siteID}</strong> na aba Causas Diárias.
-            </td></tr>`;
+            histBody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:red; padding:20px;">ERRO DE VÍNCULO: Não encontramos eventos para ${siteID}.</td></tr>`;
         } else {
             histBody.innerHTML = '';
             const contagemCausas = {};
-
             eventos.forEach(e => {
                 const data = e["DATA"] || "-";
                 const causa = e["CAUSA"] || "-";
                 const taCausa = e["TA CAUSA"] || "-";
                 const acao = e["AÇÃO REALIZADA"] || e["ACAO REALIZADA"] || "-";
                 contagemCausas[causa] = (contagemCausas[causa] || 0) + 1;
-                
-                histBody.innerHTML += `<tr>
-                    <td>${data}</td>
-                    <td>${taCausa}</td>
-                    <td>${causa}</td>
-                    <td>${acao}</td>
-                </tr>`;
+                histBody.innerHTML += `<tr><td>${data}</td><td>${taCausa}</td><td>${causa}</td><td>${acao}</td></tr>`;
             });
-
             resumo.innerHTML = `<div class="causa-item" style="background:#2c3e50; color:white;"><strong>Total: ${eventos.length}</strong></div>`;
             for (let c in contagemCausas) {
                 const p = ((contagemCausas[c] / eventos.length) * 100).toFixed(1);
@@ -251,8 +232,7 @@
     }
 
     function fecharModal() { document.getElementById('modalHistorico').style.display = "none"; }
-    window.onclick = function(event) { if (event.target == modalHistorico) fecharModal(); }
-
+    window.onclick = function(event) { if (event.target == document.getElementById('modalHistorico')) fecharModal(); }
     window.onload = init;
 </script>
 </body>
