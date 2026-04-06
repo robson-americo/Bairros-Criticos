@@ -34,13 +34,13 @@
         .bg-verde { background-color: #1e8e3e !important; }
 
         .action-btns { display: flex; gap: 5px; }
-        .btn-hist, .btn-vist, .btn-carimbo { border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 11px; color: white; font-weight: bold; }
+        .btn-hist, .btn-vist, .btn-carimbo { border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 11px; color: white; font-weight: bold; text-decoration: none; }
         .btn-hist { background: #34495e; }
         .btn-vist { background: #27ae60; }
         .btn-carimbo { background: #f39c12; }
 
         .modal { display: none; position: fixed; z-index: 100; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); overflow-y: auto; }
-        .modal-content { background: white; margin: 5% auto; padding: 25px; width: 60%; border-radius: 12px; position: relative; }
+        .modal-content { background: white; margin: 5% auto; padding: 25px; width: 70%; border-radius: 12px; position: relative; }
         .close-btn { position: absolute; right: 20px; top: 15px; font-size: 28px; cursor: pointer; color: #999; }
         .carimbo-box { background: #f8f9fa; border: 1px solid #ddd; padding: 20px; font-family: monospace; white-space: pre-wrap; font-size: 13px; border-radius: 5px; }
     </style>
@@ -71,7 +71,7 @@
         </div>
     </div>
 
-    <table id="tabelaAnalise">
+    <table>
         <thead>
             <tr>
                 <th>DDD</th>
@@ -92,6 +92,19 @@
         <h3>Gerador de Carimbo TA</h3>
         <div id="carimboContent" class="carimbo-box"></div>
         <button class="btn-clear" style="margin-top:15px; background:#1a73e8" onclick="copiarCarimbo()">Copiar Texto</button>
+    </div>
+</div>
+
+<div id="modalHistorico" class="modal">
+    <div class="modal-content">
+        <span class="close-btn" onclick="fecharModais()">&times;</span>
+        <h3 id="modalTitulo">Histórico Completo</h3>
+        <table style="width: 100%; border-collapse: collapse; margin-top: 10px;">
+            <thead style="background: #eee;">
+                <tr><th style="padding:10px">DATA</th><th style="padding:10px">TA</th><th style="padding:10px">CAUSA</th><th style="padding:10px">AÇÃO</th></tr>
+            </thead>
+            <tbody id="histBody"></tbody>
+        </table>
     </div>
 </div>
 
@@ -118,7 +131,6 @@
 
     function init() {
         definirMes();
-        // Carrega Planilha Principal
         Papa.parse(`${urlBase}&gid=${gidPrincipal}`, {
             download: true, header: true, skipEmptyLines: true,
             complete: function(res) {
@@ -127,15 +139,11 @@
                     Object.keys(row).forEach(k => newRow[k.trim().toUpperCase()] = row[k]);
                     return newRow;
                 });
-                
-                // CARD AZUL: Soma TODOS os sites únicos da planilha base uma única vez
                 document.getElementById('countTotal').innerText = dadosSites.length;
-                
                 popularFiltros();
                 filtrar();
             }
         });
-        // Carrega Histórico/Causas
         Papa.parse(`${urlBase}&gid=${gidCausas}`, {
             download: true, header: true, skipEmptyLines: true,
             complete: function(res) { 
@@ -180,8 +188,6 @@
         lista.forEach(item => {
             const percRaw = item["% " + m0] || item[m0] || "100%";
             const percNum = parseNum(percRaw);
-            
-            // CARD VERMELHO: Conta sites críticos (< 96.1) baseados no filtro atual
             if (percNum < 96.1 && percNum > 0) contCritico++;
 
             let classe = percNum < 96.1 ? "bg-vermelho" : (percNum < 98 ? "bg-amarelo" : "bg-verde");
@@ -195,6 +201,7 @@
                 <td><span class="status-badge ${classe}">${percNum < 96.1 ? 'CRÍTICO' : 'OK'}</span></td>
                 <td>
                     <div class="action-btns">
+                        <button class="btn-hist" onclick="abrirHistorico('${item.SITE}')">Histórico</button>
                         <button class="btn-vist" onclick="window.open('${linkV}')">Vistoria</button>
                         <button class="btn-carimbo" onclick="gerarCarimbo('${item.SITE}')">Carimbo</button>
                     </div>
@@ -202,6 +209,25 @@
             </tr>`;
         });
         document.getElementById('countCritico').innerText = contCritico;
+    }
+
+    function abrirHistorico(siteID) {
+        const modal = document.getElementById('modalHistorico');
+        const histBody = document.getElementById('histBody');
+        document.getElementById('modalTitulo').innerText = `Histórico: ${siteID}`;
+        
+        const eventos = dadosCausas.filter(e => (e.SITE || "").toString().toUpperCase() === siteID.toUpperCase());
+        
+        histBody.innerHTML = eventos.length ? '' : '<tr><td colspan="4" style="text-align:center; padding:20px">Nenhum registro encontrado.</td></tr>';
+        eventos.forEach(e => {
+            histBody.innerHTML += `<tr>
+                <td style="border-bottom:1px solid #eee; padding:8px">${e.DATA || '-'}</td>
+                <td style="border-bottom:1px solid #eee; padding:8px">${e["TA CAUSA"] || '-'}</td>
+                <td style="border-bottom:1px solid #eee; padding:8px">${e.CAUSA || '-'}</td>
+                <td style="border-bottom:1px solid #eee; padding:8px">${e["AÇÃO REALIZADA"] || '-'}</td>
+            </tr>`;
+        });
+        modal.style.display = "block";
     }
 
     function gerarCarimbo(siteID) {
@@ -221,19 +247,22 @@
         alert("Carimbo Copiado!");
     }
 
-    function exportarExcel() {
-        const ws = XLSX.utils.json_to_sheet(dadosSites);
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "BaseCompleta");
-        XLSX.writeFile(wb, "Base_Sites_Geral.xlsx");
-    }
-
     function limparFiltros() {
         document.querySelectorAll('select, input').forEach(el => el.value = "");
         filtrar();
     }
 
-    function fecharModais() { document.getElementById('modalCarimbo').style.display = "none"; }
+    function fecharModais() {
+        document.getElementById('modalCarimbo').style.display = "none";
+        document.getElementById('modalHistorico').style.display = "none";
+    }
+
+    function exportarExcel() {
+        const ws = XLSX.utils.json_to_sheet(dadosSites);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Dados");
+        XLSX.writeFile(wb, "Base_Geral_Sites.xlsx");
+    }
     
     window.onload = init;
 </script>
