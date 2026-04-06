@@ -8,17 +8,26 @@
     <style>
         body { font-family: 'Segoe UI', Arial, sans-serif; margin: 20px; background-color: #f4f4f9; color: #333; }
         .container { max-width: 1300px; margin: auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+        
+        /* Filtros e Botões Alinhados */
         .filters { display: flex; flex-wrap: wrap; gap: 15px; margin-bottom: 25px; background: #fff; border: 1px solid #ddd; padding: 15px; border-radius: 8px; align-items: flex-end; }
-        .filter-group { flex: 1; min-width: 180px; display: flex; flex-direction: column; }
+        .filter-group { flex: 1; min-width: 150px; display: flex; flex-direction: column; }
         label { font-weight: bold; font-size: 13px; margin-bottom: 5px; color: #555; }
         select, input { padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
-        .btn-clear { background-color: #6c757d; color: white; border: none; padding: 9px 15px; border-radius: 4px; cursor: pointer; font-weight: bold; height: 35px; }
+        
+        .btn-group { display: flex; gap: 10px; }
+        .btn-clear { background-color: #6c757d; color: white; border: none; padding: 0 15px; border-radius: 4px; cursor: pointer; font-weight: bold; height: 35px; transition: 0.3s; }
+        .btn-excel { background-color: #27ae60; color: white; border: none; padding: 0 15px; border-radius: 4px; cursor: pointer; font-weight: bold; height: 35px; transition: 0.3s; }
+        .btn-clear:hover { background-color: #5a6268; }
+        .btn-excel:hover { background-color: #219150; }
+
         .summary { display: flex; gap: 15px; margin-bottom: 25px; }
         .card { flex: 1; padding: 15px; border-radius: 8px; text-align: center; color: white; font-weight: bold; }
-        .card-total { background: #34495e; } /* CARD AZUL */
-        .card-critico { background: #e74c3c; } /* CARD VERMELHO */
+        .card-total { background: #34495e; } 
+        .card-critico { background: #e74c3c; } 
         .card span { display: block; font-size: 28px; }
         .card .label-top { font-size: 14px; text-transform: uppercase; margin-bottom: 5px; }
+
         table { width: 100%; border-collapse: collapse; margin-top: 10px; }
         th { background: #ecf0f1; padding: 12px; text-align: left; border-bottom: 2px solid #bdc3c7; }
         td { padding: 10px; border-bottom: 1px solid #eee; font-size: 14px; }
@@ -26,11 +35,11 @@
         .bg-vermelho { background-color: #d93025 !important; }
         .bg-amarelo { background-color: #f9ab00 !important; color: #3c4043 !important; }
         .bg-verde { background-color: #1e8e3e !important; }
-        .action-header { display: flex; align-items: center; gap: 10px; }
-        .btn-excel { background-color: #27ae60; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 11px; }
+
         .action-btns { display: flex; gap: 5px; }
         .btn-hist { background: #1a73e8; color: white; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; }
         .btn-vist { color: white; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; text-decoration: none; text-align: center; }
+
         .modal { display: none; position: fixed; z-index: 100; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); overflow-y: auto; }
         .modal-content { background: white; margin: 5% auto; padding: 25px; width: 85%; border-radius: 12px; position: relative; }
         .close-btn { position: absolute; right: 20px; top: 15px; font-size: 28px; cursor: pointer; color: #999; }
@@ -46,12 +55,15 @@
         <div class="filter-group"><label>Cidade</label><select id="fCidade" onchange="filtrar()"><option value="">Todas</option></select></div>
         <div class="filter-group"><label>Site</label><input type="text" id="fSite" placeholder="Buscar site..." onkeyup="filtrar()"></div>
         <div class="filter-group"><label>Criticidade</label><select id="fCrit" onchange="filtrar()"><option value="">Todas</option><option value="CRÍTICO">CRÍTICO</option><option value="NÃO CRÍTICO">NÃO CRÍTICO</option></select></div>
-        <button class="btn-clear" onclick="limparFiltros()">Limpar Filtros</button>
+        <div class="btn-group">
+            <button class="btn-clear" onclick="limparFiltros()">Limpar Filtros</button>
+            <button class="btn-excel" onclick="exportarExcel()">Exportar .xls</button>
+        </div>
     </div>
 
     <div class="summary">
         <div class="card card-total">
-            <span class="label-top">Sites último Trimestre (Sem Duplicados)</span>
+            <span class="label-top">Total de Sites no Trimestre</span>
             <span id="countTotal" class="valor">0</span>
         </div>
         <div class="card card-critico">
@@ -68,12 +80,7 @@
                 <th>Site</th>
                 <th id="labelMesTabela">% Mês</th>
                 <th>Status do Mês</th>
-                <th>
-                    <div class="action-header">
-                        Ações 
-                        <button class="btn-excel" onclick="exportarExcel()">Excel</button>
-                    </div>
-                </th>
+                <th>Ações</th>
             </tr>
         </thead>
         <tbody id="tabelaBody"></tbody>
@@ -165,12 +172,12 @@
         const siteS = document.getElementById('fSite').value.toUpperCase();
         const critF = document.getElementById('fCrit').value;
 
-        // LÓGICA DE UNIÃO (CARD AZUL): Sites que foram críticos em m0 OU m1 OU m2
         listaAtualParaExportar = dadosSites.filter(i => {
             const v0 = parsePercent(i["% " + m0] || i[m0]);
             const v1 = parsePercent(i["% " + m1] || i[m1]);
             const v2 = parsePercent(i["% " + m2] || i[m2]);
 
+            // Critério: Foi crítico em algum dos 3 meses
             const ehCriticoTrimestre = (v0 < 96 && v0 > 0) || (v1 < 96 && v1 > 0) || (v2 < 96 && v2 > 0);
             
             if (!ehCriticoTrimestre) return false;
@@ -181,6 +188,7 @@
                    (!critF || i["CRÍTICIDADE ATUAL"] === critF);
         });
 
+        // O Card Azul agora soma exatamente o total de sites que sobraram na tabela filtrada
         document.getElementById('countTotal').innerText = listaAtualParaExportar.length;
         renderizarTabela(listaAtualParaExportar);
     }
@@ -236,8 +244,8 @@
 
         const ws = XLSX.utils.json_to_sheet(dadosExport);
         const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "Criticos");
-        XLSX.writeFile(wb, "Relatorio_Bairros_Criticos.xlsx");
+        XLSX.utils.book_append_sheet(wb, ws, "Dados");
+        XLSX.writeFile(wb, "Relatorio_Sites_Criticos.xlsx");
     }
 
     function limparFiltros() {
