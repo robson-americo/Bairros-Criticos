@@ -36,12 +36,16 @@
         .bg-verde { background-color: #1e8e3e !important; }
 
         .action-btns { display: flex; gap: 5px; }
-        .btn-hist { background: #1a73e8; color: white; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; }
-        .btn-vist { color: white; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; text-decoration: none; text-align: center; }
+        .btn-hist { background: #1a73e8; color: white; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 11px; }
+        .btn-vist { background-color: #27ae60; color: white; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 11px; text-decoration: none; text-align: center; }
+        .btn-carimbo { background-color: #f39c12; color: white; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 11px; font-weight: bold; }
 
         .modal { display: none; position: fixed; z-index: 100; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); overflow-y: auto; }
-        .modal-content { background: white; margin: 5% auto; padding: 25px; width: 85%; border-radius: 12px; position: relative; }
+        .modal-content { background: white; margin: 5% auto; padding: 25px; width: 60%; border-radius: 12px; position: relative; }
         .close-btn { position: absolute; right: 20px; top: 15px; font-size: 28px; cursor: pointer; color: #999; }
+        
+        .carimbo-box { background: #f8f9fa; border: 1px solid #ddd; padding: 20px; font-family: monospace; white-space: pre-wrap; font-size: 14px; line-height: 1.5; border-radius: 5px; }
+        .btn-copy { margin-top: 15px; background: #34495e; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; }
     </style>
 </head>
 <body>
@@ -86,6 +90,15 @@
     </table>
 </div>
 
+<div id="modalCarimbo" class="modal">
+    <div class="modal-content">
+        <span class="close-btn" onclick="fecharModalCarimbo()">&times;</span>
+        <h3>Gerador de Carimbo TA</h3>
+        <div id="carimboContent" class="carimbo-box"></div>
+        <button class="btn-copy" onclick="copiarCarimbo()">Copiar Texto</button>
+    </div>
+</div>
+
 <div id="modalHistorico" class="modal">
     <div class="modal-content">
         <span class="close-btn" onclick="fecharModal()">&times;</span>
@@ -120,7 +133,6 @@
         m0 = meses[d.getMonth()];
         m1 = meses[(d.getMonth() - 1 + 12) % 12];
         m2 = meses[(d.getMonth() - 2 + 12) % 12];
-
         document.getElementById('labelMesCard').innerText = m0;
         document.getElementById('labelMesTabela').innerText = "% " + m0;
     }
@@ -171,25 +183,15 @@
         const siteS = document.getElementById('fSite').value.toUpperCase();
         const critF = document.getElementById('fCrit').value;
 
-        // LÓGICA: Pegar sites que falharam (<96) em QUALQUER um dos últimos 3 meses
         listaFiltradaTrimestre = dadosSites.filter(i => {
             const v0 = parseNum(i["% " + m0] || i[m0]);
             const v1 = parseNum(i["% " + m1] || i[m1]);
             const v2 = parseNum(i["% " + m2] || i[m2]);
-
-            // Se o site foi crítico em algum mês do trimestre (m0, m1 ou m2)
             const falhouNoTrimestre = (v0 < 96 && v0 > 0) || (v1 < 96 && v1 > 0) || (v2 < 96 && v2 > 0);
-            
             if (!falhouNoTrimestre) return false;
-
-            // Filtros de interface
-            return (!ddd || i.DDD === ddd) && 
-                   (!cid || (i.MUNICÍPIO === cid || i.CIDADE === cid)) && 
-                   (!siteS || (i.SITE && i.SITE.toUpperCase().includes(siteS))) && 
-                   (!critF || i["CRÍTICIDADE ATUAL"] === critF);
+            return (!ddd || i.DDD === ddd) && (!cid || (i.MUNICÍPIO === cid || i.CIDADE === cid)) && (!siteS || (i.SITE && i.SITE.toUpperCase().includes(siteS))) && (!critF || i["CRÍTICIDADE ATUAL"] === critF);
         });
 
-        // O Card Azul totaliza todos os sites únicos que entraram no filtro do trimestre
         document.getElementById('countTotal').innerText = listaFiltradaTrimestre.length;
         renderizarTabela(listaFiltradaTrimestre);
     }
@@ -202,10 +204,7 @@
         lista.forEach(item => {
             const percRaw = item["% " + m0] || item[m0] || "0%";
             const percNum = parseNum(percRaw);
-            
-            // O Card Vermelho conta apenas quem falhou no mês atual (m0)
             if (percNum < 96 && percNum > 0) contMesAtual++;
-
             let classe = percNum < 96 ? "bg-vermelho" : (percNum < 98 ? "bg-amarelo" : "bg-verde");
             const linkV = (item["VISTORIA"] || "").trim();
             const corB = (linkV && linkV !== "-") ? "#27ae60" : "#7f8c8d";
@@ -220,6 +219,7 @@
                     <div class="action-btns">
                         <button class="btn-hist" onclick="abrirHistorico('${item.SITE}')">Histórico</button>
                         <button class="btn-vist" style="background-color: ${corB}" onclick="abrirVistoria('${linkV}', '${item.SITE}')">Vistoria</button>
+                        <button class="btn-carimbo" onclick="gerarCarimbo('${item.SITE}')">Carimbo TA</button>
                     </div>
                 </td>
             </tr>`;
@@ -227,30 +227,57 @@
         document.getElementById('countCritico').innerText = contMesAtual;
     }
 
-    function exportarExcel() {
-        if(listaFiltradaTrimestre.length === 0) return alert("Sem dados para exportar.");
+    function gerarCarimbo(siteID) {
+        const modal = document.getElementById('modalCarimbo');
+        const box = document.getElementById('carimboContent');
         
+        // Filtra e pega os últimos 3 atendimentos
+        const atendimentos = dadosCausas
+            .filter(e => (e.SITE || "").toString().toUpperCase() === siteID.toUpperCase())
+            .slice(-3) // Pega os últimos 3
+            .reverse(); // Ordem decrescente
+
+        let textoAtendimentos = "";
+        if (atendimentos.length === 0) {
+            textoAtendimentos = "Sem atendimentos registrados no histórico.\n";
+        } else {
+            atendimentos.forEach(a => {
+                textoAtendimentos += `${a.DATA || '-'}   ${a["TA CAUSA"] || '-'}   ${a.CAUSA || '-'}   ${a["AÇÃO REALIZADA"] || '-'}\n`;
+            });
+        }
+
+        const carimboFinal = `****************BAIRRO CRÍTICO***********
+DATA   TA    CAUSA    AÇÃO REALIZADA
+${textoAtendimentos}
+
+Técnico:
+Deslocamento:
+************************************`;
+
+        box.innerText = carimboFinal;
+        modal.style.display = "block";
+    }
+
+    function copiarCarimbo() {
+        const text = document.getElementById('carimboContent').innerText;
+        navigator.clipboard.writeText(text).then(() => {
+            alert("Carimbo copiado com sucesso!");
+        });
+    }
+
+    function fecharModalCarimbo() { document.getElementById('modalCarimbo').style.display = "none"; }
+
+    function exportarExcel() {
         const dadosExport = listaFiltradaTrimestre.map(item => {
             const hist = dadosCausas.filter(h => h.SITE === item.SITE);
             const last = hist.length > 0 ? hist[hist.length - 1] : {};
             const perc = parseNum(item["% " + m0] || item[m0]);
-            
-            return {
-                "DDD": item.DDD || "-",
-                "Cidade": item.MUNICÍPIO || item.CIDADE || "-",
-                "Site": item.SITE,
-                "Performance Atual": item["% " + m0] || item[m0] || "0%",
-                "Status Atual": perc < 96 ? "CRÍTICO" : "OK",
-                "Último Atendimento": last.DATA || "-",
-                "Causa": last.CAUSA || "-",
-                "Ação": last["AÇÃO REALIZADA"] || "-"
-            };
+            return { "DDD": item.DDD || "-", "Cidade": item.MUNICÍPIO || item.CIDADE || "-", "Site": item.SITE, "Performance Atual": item["% " + m0] || item[m0] || "0%", "Status Atual": perc < 96 ? "CRÍTICO" : "OK", "Último Atendimento": last.DATA || "-", "Causa": last.CAUSA || "-", "Ação": last["AÇÃO REALIZADA"] || "-" };
         });
-
         const ws = XLSX.utils.json_to_sheet(dadosExport);
         const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "Criticos_Trimestre");
-        XLSX.writeFile(wb, "Relatorio_Sites_Criticos_Trimestre.xlsx");
+        XLSX.utils.book_append_sheet(wb, ws, "Dados");
+        XLSX.writeFile(wb, "Relatorio_Sites_Criticos.xlsx");
     }
 
     function limparFiltros() {
@@ -267,7 +294,6 @@
     function abrirHistorico(siteID) {
         const modal = document.getElementById('modalHistorico');
         const histBody = document.getElementById('histBody');
-        document.getElementById('modalTitulo').innerText = `Histórico: ${siteID}`;
         const eventos = dadosCausas.filter(e => (e.SITE || "").toString().toUpperCase() === siteID.toUpperCase());
         histBody.innerHTML = eventos.length ? '' : '<tr><td colspan="4">Sem registros.</td></tr>';
         eventos.forEach(e => {
