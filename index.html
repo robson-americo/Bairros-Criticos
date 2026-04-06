@@ -65,7 +65,7 @@
         </div>
         <div class="btn-group">
             <button class="btn-clear" onclick="limparFiltros()">Limpar Filtros</button>
-            <button class="btn-excel" onclick="exportarExcel()">Exportar .xls</button>
+            <button class="btn-excel" onclick="exportarExcel()">Exportar Relatório</button>
         </div>
     </div>
 
@@ -124,6 +124,7 @@
 
     let dadosSites = [];
     let dadosCausas = [];
+    let listaAtualParaExportar = [];
     let m0 = "";
 
     function definirMes() {
@@ -180,21 +181,18 @@
         const siteS = document.getElementById('fSite').value.toUpperCase();
         const critF = document.getElementById('fCrit').value;
 
-        const listaFiltrada = dadosSites.filter(i => {
+        listaAtualParaExportar = dadosSites.filter(i => {
             const perc = parseNum(i["% " + m0] || i[m0]);
-            
             const matchDDD = !ddd || i.DDD === ddd;
             const matchCid = !cid || (i.MUNICÍPIO === cid || i.CIDADE === cid);
             const matchSite = !siteS || (i.SITE && i.SITE.toUpperCase().includes(siteS));
-            
             let matchCrit = true;
             if(critF === "CRITICO") matchCrit = (perc < 96.1 && perc > 0);
             if(critF === "OK") matchCrit = (perc >= 96.1);
-
             return matchDDD && matchCid && matchSite && matchCrit;
         });
 
-        renderizarTabela(listaFiltrada);
+        renderizarTabela(listaAtualParaExportar);
     }
 
     function renderizarTabela(lista) {
@@ -205,12 +203,8 @@
         lista.forEach(item => {
             const percRaw = item["% " + m0] || item[m0] || "100%";
             const percNum = parseNum(percRaw);
-            
-            // O contador do card vermelho reflete apenas os críticos dentro da lista filtrada
             if (percNum < 96.1 && percNum > 0) contCritico++;
-
             let classe = percNum < 96.1 ? "bg-vermelho" : (percNum < 98 ? "bg-amarelo" : "bg-verde");
-            
             const linkVistoria = (item["VISTORIA"] || "").trim();
             const temLink = linkVistoria !== "" && linkVistoria !== "-";
             const classeVistoria = temLink ? "btn-vist-filled" : "btn-vist-empty";
@@ -234,6 +228,36 @@
         document.getElementById('countCritico').innerText = contCritico;
     }
 
+    function exportarExcel() {
+        if (listaAtualParaExportar.length === 0) return alert("Não há dados para exportar.");
+
+        const dadosRelatorio = listaAtualParaExportar.map(item => {
+            const percRaw = item["% " + m0] || item[m0] || "100%";
+            const percNum = parseNum(percRaw);
+            
+            // Busca o último atendimento deste site na base de causas
+            const historicoSite = dadosCausas.filter(h => (h.SITE || "").toString().toUpperCase() === item.SITE.toUpperCase());
+            const ultimo = historicoSite.length > 0 ? historicoSite[historicoSite.length - 1] : {};
+
+            return {
+                "DDD": item.DDD || "-",
+                "Cidade": item.MUNICÍPIO || item.CIDADE || "-",
+                "Site": item.SITE,
+                "Performance Atual": percRaw,
+                "Status": percNum < 96.1 ? "CRÍTICO" : "OK",
+                "Data Último Atend.": ultimo.DATA || "-",
+                "TA Último Atend.": ultimo["TA CAUSA"] || "-",
+                "Causa": ultimo.CAUSA || "-",
+                "Ação Realizada": ultimo["AÇÃO REALIZADA"] || "-"
+            };
+        });
+
+        const ws = XLSX.utils.json_to_sheet(dadosRelatorio);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Relatório Consolidado");
+        XLSX.writeFile(wb, `Relatorio_Performance_${m0}.xlsx`);
+    }
+
     function abrirHistorico(siteID) {
         const modal = document.getElementById('modalHistorico');
         const histBody = document.getElementById('histBody');
@@ -255,9 +279,7 @@
         const atendimentos = dadosCausas
             .filter(e => (e.SITE || "").toString().toUpperCase() === siteID.toUpperCase())
             .slice(-3).reverse();
-
         let linhas = atendimentos.map(a => `${a.DATA || '-'}   ${a["TA CAUSA"] || '-'}   ${a.CAUSA || '-'}   ${a["AÇÃO REALIZADA"] || '-'}`).join('\n');
-
         const carimbo = `****************BAIRRO CRÍTICO***********\nDATA   TA    CAUSA    AÇÃO REALIZADA\n${linhas || 'Sem histórico.'}\n\nTécnico:\nDeslocamento:\n************************************`;
         document.getElementById('carimboContent').innerText = carimbo;
         document.getElementById('modalCarimbo').style.display = "block";
@@ -276,13 +298,6 @@
     function fecharModais() {
         document.getElementById('modalCarimbo').style.display = "none";
         document.getElementById('modalHistorico').style.display = "none";
-    }
-
-    function exportarExcel() {
-        const ws = XLSX.utils.json_to_sheet(dadosSites);
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "Dados");
-        XLSX.writeFile(wb, "Base_Geral_Sites.xlsx");
     }
     
     window.onload = init;
