@@ -36,7 +36,9 @@
         .action-btns { display: flex; gap: 5px; }
         .btn-hist, .btn-vist, .btn-carimbo { border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 11px; color: white; font-weight: bold; text-decoration: none; }
         .btn-hist { background: #34495e; }
-        .btn-vist { background: #27ae60; }
+        /* Estilos base para Vistoria */
+        .btn-vist-empty { background: #95a5a6; cursor: not-allowed; }
+        .btn-vist-filled { background: #27ae60; cursor: pointer; }
         .btn-carimbo { background: #f39c12; }
 
         .modal { display: none; position: fixed; z-index: 100; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); overflow-y: auto; }
@@ -191,7 +193,12 @@
             if (percNum < 96.1 && percNum > 0) contCritico++;
 
             let classe = percNum < 96.1 ? "bg-vermelho" : (percNum < 98 ? "bg-amarelo" : "bg-verde");
-            const linkV = (item["VISTORIA"] || "").trim();
+            
+            // LÓGICA DO BOTÃO VISTORIA
+            const linkVistoria = (item["VISTORIA"] || "").trim();
+            const temLink = linkVistoria !== "" && linkVistoria !== "-";
+            const classeVistoria = temLink ? "btn-vist-filled" : "btn-vist-empty";
+            const acaoVistoria = temLink ? `onclick="window.open('${linkVistoria}', '_blank')"` : `onclick="alert('Vistoria não disponível para este site.')"`;
 
             corpo.innerHTML += `<tr>
                 <td>${item.DDD || '-'}</td>
@@ -202,7 +209,7 @@
                 <td>
                     <div class="action-btns">
                         <button class="btn-hist" onclick="abrirHistorico('${item.SITE}')">Histórico</button>
-                        <button class="btn-vist" onclick="window.open('${linkV}')">Vistoria</button>
+                        <button class="btn-vist ${classeVistoria}" ${acaoVistoria}>Vistoria</button>
                         <button class="btn-carimbo" onclick="gerarCarimbo('${item.SITE}')">Carimbo</button>
                     </div>
                 </td>
@@ -215,9 +222,7 @@
         const modal = document.getElementById('modalHistorico');
         const histBody = document.getElementById('histBody');
         document.getElementById('modalTitulo').innerText = `Histórico: ${siteID}`;
-        
         const eventos = dadosCausas.filter(e => (e.SITE || "").toString().toUpperCase() === siteID.toUpperCase());
-        
         histBody.innerHTML = eventos.length ? '' : '<tr><td colspan="4" style="text-align:center; padding:20px">Nenhum registro encontrado.</td></tr>';
         eventos.forEach(e => {
             histBody.innerHTML += `<tr>
