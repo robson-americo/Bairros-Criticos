@@ -36,7 +36,6 @@
         .action-btns { display: flex; gap: 5px; }
         .btn-hist, .btn-vist, .btn-carimbo { border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 11px; color: white; font-weight: bold; text-decoration: none; }
         .btn-hist { background: #34495e; }
-        /* Estilos base para Vistoria */
         .btn-vist-empty { background: #95a5a6; cursor: not-allowed; }
         .btn-vist-filled { background: #27ae60; cursor: pointer; }
         .btn-carimbo { background: #f39c12; }
@@ -56,6 +55,14 @@
         <div class="filter-group"><label>DDD</label><select id="fDDD" onchange="filtrar()"><option value="">Todos</option></select></div>
         <div class="filter-group"><label>Cidade</label><select id="fCidade" onchange="filtrar()"><option value="">Todas</option></select></div>
         <div class="filter-group"><label>Site</label><input type="text" id="fSite" placeholder="Busca..." onkeyup="filtrar()"></div>
+        <div class="filter-group">
+            <label>Criticidade (Mês Atual)</label>
+            <select id="fCrit" onchange="filtrar()">
+                <option value="">Todas</option>
+                <option value="CRITICO">CRÍTICO (< 96,1%)</option>
+                <option value="OK">OK (>= 96,1%)</option>
+            </select>
+        </div>
         <div class="btn-group">
             <button class="btn-clear" onclick="limparFiltros()">Limpar Filtros</button>
             <button class="btn-excel" onclick="exportarExcel()">Exportar .xls</button>
@@ -68,7 +75,7 @@
             <span id="countTotal" class="valor">0</span>
         </div>
         <div class="card card-critico">
-            <span id="labelMesCard" class="label-top">MÊS ATUAL (<=96%)</span>
+            <span id="labelMesCard" class="label-top">MÊS ATUAL (CRÍTICOS)</span>
             <span id="countCritico" class="valor">0</span>
         </div>
     </div>
@@ -127,7 +134,7 @@
     }
 
     function parseNum(val) {
-        if (!val || val === "-") return 100;
+        if (!val || val === "-" || val === "") return 100;
         return parseFloat(val.toString().replace(',', '.').replace('%', '')) || 0;
     }
 
@@ -171,12 +178,20 @@
         const ddd = document.getElementById('fDDD').value;
         const cid = document.getElementById('fCidade').value;
         const siteS = document.getElementById('fSite').value.toUpperCase();
+        const critF = document.getElementById('fCrit').value;
 
         const listaFiltrada = dadosSites.filter(i => {
+            const perc = parseNum(i["% " + m0] || i[m0]);
+            
             const matchDDD = !ddd || i.DDD === ddd;
             const matchCid = !cid || (i.MUNICÍPIO === cid || i.CIDADE === cid);
             const matchSite = !siteS || (i.SITE && i.SITE.toUpperCase().includes(siteS));
-            return matchDDD && matchCid && matchSite;
+            
+            let matchCrit = true;
+            if(critF === "CRITICO") matchCrit = (perc < 96.1 && perc > 0);
+            if(critF === "OK") matchCrit = (perc >= 96.1);
+
+            return matchDDD && matchCid && matchSite && matchCrit;
         });
 
         renderizarTabela(listaFiltrada);
@@ -190,15 +205,16 @@
         lista.forEach(item => {
             const percRaw = item["% " + m0] || item[m0] || "100%";
             const percNum = parseNum(percRaw);
+            
+            // O contador do card vermelho reflete apenas os críticos dentro da lista filtrada
             if (percNum < 96.1 && percNum > 0) contCritico++;
 
             let classe = percNum < 96.1 ? "bg-vermelho" : (percNum < 98 ? "bg-amarelo" : "bg-verde");
             
-            // LÓGICA DO BOTÃO VISTORIA
             const linkVistoria = (item["VISTORIA"] || "").trim();
             const temLink = linkVistoria !== "" && linkVistoria !== "-";
             const classeVistoria = temLink ? "btn-vist-filled" : "btn-vist-empty";
-            const acaoVistoria = temLink ? `onclick="window.open('${linkVistoria}', '_blank')"` : `onclick="alert('Vistoria não disponível para este site.')"`;
+            const acaoVistoria = temLink ? `onclick="window.open('${linkVistoria}', '_blank')"` : `onclick="alert('Vistoria não disponível.')"`;
 
             corpo.innerHTML += `<tr>
                 <td>${item.DDD || '-'}</td>
