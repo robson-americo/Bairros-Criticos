@@ -131,8 +131,8 @@
         const meses = ["JANEIRO", "FEVEREIRO", "MARÇO", "ABRIL", "MAIO", "JUNHO", "JULHO", "AGOSTO", "SETEMBRO", "OUTUBRO", "NOVEMBRO", "DEZEMBRO"];
         const d = new Date();
         m0 = meses[d.getMonth()];
-        m1 = meses[(d.getMonth() - 1];
-        m2 = meses[(d.getMonth() - 2];
+        m1 = meses[(d.getMonth() - 1 + 12) % 12];
+        m2 = meses[(d.getMonth() - 2 + 12) % 12];
         document.getElementById('labelMesCard').innerText = m0;
         document.getElementById('labelMesTabela').innerText = "% " + m0;
     }
