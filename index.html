@@ -5,7 +5,6 @@
     <title>Painel de Bairros Críticos & Histórico</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    
     <style>
         body { font-family: 'Segoe UI', Arial, sans-serif; margin: 20px; background-color: #f4f4f9; color: #333; }
         .container { max-width: 1300px; margin: auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
@@ -13,33 +12,26 @@
         .filter-group { flex: 1; min-width: 180px; display: flex; flex-direction: column; }
         label { font-weight: bold; font-size: 13px; margin-bottom: 5px; color: #555; }
         select, input { padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
-        
         .btn-clear { background-color: #6c757d; color: white; border: none; padding: 9px 15px; border-radius: 4px; cursor: pointer; font-weight: bold; height: 35px; }
-        .btn-excel { background-color: #27ae60; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 12px; transition: 0.3s; }
-        .btn-excel:hover { background-color: #219150; }
-
         .summary { display: flex; gap: 15px; margin-bottom: 25px; }
         .card { flex: 1; padding: 15px; border-radius: 8px; text-align: center; color: white; font-weight: bold; }
-        .card-total { background: #34495e; }
-        .card-critico { background: #e74c3c; }
+        .card-total { background: #34495e; } /* CARD AZUL */
+        .card-critico { background: #e74c3c; } /* CARD VERMELHO */
         .card span { display: block; font-size: 28px; }
         .card .label-top { font-size: 14px; text-transform: uppercase; margin-bottom: 5px; }
-
         table { width: 100%; border-collapse: collapse; margin-top: 10px; }
         th { background: #ecf0f1; padding: 12px; text-align: left; border-bottom: 2px solid #bdc3c7; }
         td { padding: 10px; border-bottom: 1px solid #eee; font-size: 14px; }
-        
         .status-badge { padding: 6px 12px; border-radius: 20px; font-size: 11px; color: white !important; font-weight: bold; text-transform: uppercase; display: inline-block; min-width: 90px; text-align: center; }
         .bg-vermelho { background-color: #d93025 !important; }
         .bg-amarelo { background-color: #f9ab00 !important; color: #3c4043 !important; }
         .bg-verde { background-color: #1e8e3e !important; }
-
         .action-header { display: flex; align-items: center; gap: 10px; }
+        .btn-excel { background-color: #27ae60; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 11px; }
         .action-btns { display: flex; gap: 5px; }
         .btn-hist { background: #1a73e8; color: white; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; }
         .btn-vist { color: white; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; text-decoration: none; text-align: center; }
-
-        .modal { display: none; position: fixed; z-index: 100; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); }
+        .modal { display: none; position: fixed; z-index: 100; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); overflow-y: auto; }
         .modal-content { background: white; margin: 5% auto; padding: 25px; width: 85%; border-radius: 12px; position: relative; }
         .close-btn { position: absolute; right: 20px; top: 15px; font-size: 28px; cursor: pointer; color: #999; }
     </style>
@@ -59,11 +51,11 @@
 
     <div class="summary">
         <div class="card card-total">
-            <span class="label-top">Sites Únicos Críticos (Trimestre)</span>
+            <span class="label-top">Sites último Trimestre (Sem Duplicados)</span>
             <span id="countTotal" class="valor">0</span>
         </div>
         <div class="card card-critico">
-            <span id="labelMesCard" class="label-top">MÊS</span>
+            <span id="labelMesCard" class="label-top">MÊS ATUAL</span>
             <span id="countCritico" class="valor">0</span>
         </div>
     </div>
@@ -79,7 +71,7 @@
                 <th>
                     <div class="action-header">
                         Ações 
-                        <button class="btn-excel" onclick="exportarExcel()">📊 Exportar Excel</button>
+                        <button class="btn-excel" onclick="exportarExcel()">Excel</button>
                     </div>
                 </th>
             </tr>
@@ -92,7 +84,7 @@
     <div class="modal-content">
         <span class="close-btn" onclick="fecharModal()">&times;</span>
         <h3 id="modalTitulo">Histórico do Site</h3>
-        <table id="tabelaHistorico" style="width:100%">
+        <table id="tabelaHistorico" style="width: 100%;">
             <thead>
                 <tr>
                     <th>DATA</th>
@@ -113,22 +105,23 @@
 
     let dadosSites = [];
     let dadosCausas = [];
-    let listaFiltradaAtual = []; // Para exportar o que está na tela
-    let mes0 = "", mes1 = "", mes2 = "";
+    let m0 = "", m1 = "", m2 = "";
+    let listaAtualParaExportar = [];
 
     function definirMeses() {
         const meses = ["JANEIRO", "FEVEREIRO", "MARÇO", "ABRIL", "MAIO", "JUNHO", "JULHO", "AGOSTO", "SETEMBRO", "OUTUBRO", "NOVEMBRO", "DEZEMBRO"];
-        const dataHoje = new Date();
-        mes0 = meses[dataHoje.getMonth()];
-        mes1 = meses[(dataHoje.getMonth() - 1 + 12) % 12];
-        mes2 = meses[(dataHoje.getMonth() - 2 + 12) % 12];
-        document.getElementById('labelMesCard').innerText = mes0;
-        document.getElementById('labelMesTabela').innerText = "% " + mes0;
+        const d = new Date();
+        m0 = meses[d.getMonth()];
+        m1 = meses[(d.getMonth() - 1 + 12) % 12];
+        m2 = meses[(d.getMonth() - 2 + 12) % 12];
+
+        document.getElementById('labelMesCard').innerText = m0;
+        document.getElementById('labelMesTabela').innerText = "% " + m0;
     }
 
-    function converterValor(valor) {
-        if (!valor || valor === "-") return 100;
-        return parseFloat(valor.toString().replace(',', '.').replace('%', '')) || 0;
+    function parsePercent(val) {
+        if (!val || val === "-") return 100;
+        return parseFloat(val.toString().replace(',', '.').replace('%', '')) || 0;
     }
 
     function init() {
@@ -172,12 +165,15 @@
         const siteS = document.getElementById('fSite').value.toUpperCase();
         const critF = document.getElementById('fCrit').value;
 
-        listaFiltradaAtual = dadosSites.filter(i => {
-            const v0 = converterValor(i["% " + mes0] || i[mes0]);
-            const v1 = converterValor(i["% " + mes1] || i[mes1]);
-            const v2 = converterValor(i["% " + mes2] || i[mes2]);
-            const foiRuim = (v0 <= 96 && v0 > 0) || (v1 <= 96 && v1 > 0) || (v2 <= 96 && v2 > 0);
-            if (!foiRuim) return false;
+        // LÓGICA DE UNIÃO (CARD AZUL): Sites que foram críticos em m0 OU m1 OU m2
+        listaAtualParaExportar = dadosSites.filter(i => {
+            const v0 = parsePercent(i["% " + m0] || i[m0]);
+            const v1 = parsePercent(i["% " + m1] || i[m1]);
+            const v2 = parsePercent(i["% " + m2] || i[m2]);
+
+            const ehCriticoTrimestre = (v0 < 96 && v0 > 0) || (v1 < 96 && v1 > 0) || (v2 < 96 && v2 > 0);
+            
+            if (!ehCriticoTrimestre) return false;
 
             return (!ddd || i.DDD === ddd) && 
                    (!cid || (i.MUNICÍPIO === cid || i.CIDADE === cid)) && 
@@ -185,8 +181,8 @@
                    (!critF || i["CRÍTICIDADE ATUAL"] === critF);
         });
 
-        document.getElementById('countTotal').innerText = listaFiltradaAtual.length;
-        renderizarTabela(listaFiltradaAtual);
+        document.getElementById('countTotal').innerText = listaAtualParaExportar.length;
+        renderizarTabela(listaAtualParaExportar);
     }
 
     function renderizarTabela(lista) {
@@ -195,61 +191,53 @@
         let contMesAtual = 0;
 
         lista.forEach(item => {
-            const percRaw = item["% " + mes0] || item[mes0] || "0%";
-            const percNum = converterValor(percRaw);
-            if(percNum <= 96 && percNum > 0) contMesAtual++;
+            const percRaw = item["% " + m0] || item[m0] || "0%";
+            const percNum = parsePercent(percRaw);
+            
+            if (percNum < 96 && percNum > 0) contMesAtual++;
 
-            let classe = percNum <= 96 ? "bg-vermelho" : (percNum < 98 ? "bg-amarelo" : "bg-verde");
-            const linkVistoria = (item["VISTORIA"] || "").trim();
-            const temLink = (linkVistoria !== "" && linkVistoria !== "-");
+            let classe = percNum < 96 ? "bg-vermelho" : (percNum < 98 ? "bg-amarelo" : "bg-verde");
+            const linkV = (item["VISTORIA"] || "").trim();
+            const corB = (linkV && linkV !== "-") ? "#27ae60" : "#7f8c8d";
 
-            corpo.innerHTML += `<tr> 
-                <td>${item.DDD || '-'}</td> 
-                <td>${item.MUNICÍPIO || item.CIDADE || '-'}</td> 
-                <td><strong>${item.SITE}</strong></td> 
-                <td>${percRaw}</td> 
-                <td><span class="status-badge ${classe}">${percNum <= 96 ? 'CRÍTICO' : 'OK'}</span></td> 
-                <td> 
-                    <div class="action-btns"> 
-                        <button class="btn-hist" onclick="abrirHistorico('${item.SITE}')">Histórico</button> 
-                        <button class="btn-vist" style="background-color: ${temLink ? '#27ae60' : '#7f8c8d'}" onclick="abrirVistoria('${linkVistoria}', '${item.SITE}')">Vistoria</button> 
-                    </div> 
-                </td> 
-            </tr>`; 
+            corpo.innerHTML += `<tr>
+                <td>${item.DDD || '-'}</td>
+                <td>${item.MUNICÍPIO || item.CIDADE || '-'}</td>
+                <td><strong>${item.SITE}</strong></td>
+                <td>${percRaw}</td>
+                <td><span class="status-badge ${classe}">${percNum < 96 ? 'CRÍTICO' : 'OK'}</span></td>
+                <td>
+                    <div class="action-btns">
+                        <button class="btn-hist" onclick="abrirHistorico('${item.SITE}')">Histórico</button>
+                        <button class="btn-vist" style="background-color: ${corB}" onclick="abrirVistoria('${linkV}', '${item.SITE}')">Vistoria</button>
+                    </div>
+                </td>
+            </tr>`;
         });
         document.getElementById('countCritico').innerText = contMesAtual;
     }
 
-    // --- LOGICA DE EXPORTAÇÃO ---
     function exportarExcel() {
-        if (listaFiltradaAtual.length === 0) {
-            alert("Não há dados para exportar.");
-            return;
-        }
-
-        const dadosExcel = listaFiltradaAtual.map(item => {
-            // Busca o último evento no histórico para este site
-            const historicoSite = dadosCausas.filter(h => h.SITE === item.SITE);
-            const ultimoHist = historicoSite.length > 0 ? historicoSite[historicoSite.length - 1] : {};
-
-            const vAtualNum = converterValor(item["% " + mes0] || item[mes0]);
-
+        const dadosExport = listaAtualParaExportar.map(item => {
+            const hist = dadosCausas.filter(h => h.SITE === item.SITE);
+            const last = hist.length > 0 ? hist[hist.length - 1] : {};
+            const perc = parsePercent(item["% " + m0] || item[m0]);
+            
             return {
                 "DDD": item.DDD || "-",
                 "Cidade": item.MUNICÍPIO || item.CIDADE || "-",
                 "Site": item.SITE,
-                "Performance Mês Atual": item["% " + mes0] || item[mes0] || "0%",
-                "Status": vAtualNum <= 96 ? "CRÍTICO" : "OK",
-                "Data Último Atendimento": ultimoHist.DATA || "Sem histórico",
-                "Causa Último Atendimento": ultimoHist.CAUSA || "Sem histórico",
-                "Ação Realizada": ultimoHist["AÇÃO REALIZADA"] || "-"
+                "% Mês Atual": item["% " + m0] || item[m0] || "0%",
+                "Status do Mês": perc < 96 ? "CRÍTICO" : "OK",
+                "Data Último Histórico": last.DATA || "-",
+                "Causa Último Histórico": last.CAUSA || "-"
             };
         });
 
+        const ws = XLSX.utils.json_to_sheet(dadosExport);
         const wb = XLSX.utils.book_new();
-        const ws = XLSX.utils.json_to_sheet(dadosExcel);
-        XLSX.utils.book_append_sheet(wb, ws, "Bairros Críticos");
-        XLSX.writeFile(wb, `Relatorio_Criticos_${mes0}.xlsx`);
+        XLSX.utils.book_append_sheet(wb, ws, "Criticos");
+        XLSX.writeFile(wb, "Relatorio_Bairros_Criticos.xlsx");
     }
 
     function limparFiltros() {
@@ -259,7 +247,7 @@
     }
 
     function abrirVistoria(url, siteID) {
-        if (!url || url === "-" || url.trim() === "") alert(`Vistoria pendente para ${siteID}.`);
+        if (!url || url === "-") alert(`Vistoria pendente para ${siteID}`);
         else window.open(url, '_blank');
     }
 
