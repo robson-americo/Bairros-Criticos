@@ -7,12 +7,12 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
         body { font-family: 'Segoe UI', Arial, sans-serif; margin: 20px; background-color: #f4f4f9; color: #333; }
-        .container { max-width: 1300px; margin: auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+        .container { max-width: 1400px; margin: auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
         
-        .filters { display: flex; flex-wrap: wrap; gap: 15px; margin-bottom: 25px; background: #fff; border: 1px solid #ddd; padding: 15px; border-radius: 8px; align-items: flex-end; }
-        .filter-group { flex: 1; min-width: 150px; display: flex; flex-direction: column; }
-        label { font-weight: bold; font-size: 13px; margin-bottom: 5px; color: #555; }
-        select, input { padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
+        .filters { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 25px; background: #fff; border: 1px solid #ddd; padding: 15px; border-radius: 8px; align-items: flex-end; }
+        .filter-group { flex: 1; min-width: 140px; display: flex; flex-direction: column; }
+        label { font-weight: bold; font-size: 12px; margin-bottom: 5px; color: #555; text-transform: uppercase; }
+        select, input { padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 13px; }
         
         .btn-group { display: flex; gap: 10px; }
         .btn-clear { background-color: #6c757d; color: white; border: none; padding: 0 15px; border-radius: 4px; cursor: pointer; font-weight: bold; height: 35px; }
@@ -26,17 +26,17 @@
         .card .label-top { font-size: 14px; text-transform: uppercase; margin-bottom: 5px; }
 
         table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-        th { background: #ecf0f1; padding: 12px; text-align: left; border-bottom: 2px solid #bdc3c7; }
-        td { padding: 10px; border-bottom: 1px solid #eee; font-size: 14px; }
-        .status-badge { padding: 6px 12px; border-radius: 20px; font-size: 11px; color: white !important; font-weight: bold; text-transform: uppercase; display: inline-block; min-width: 90px; text-align: center; }
+        th { background: #ecf0f1; padding: 12px; text-align: left; border-bottom: 2px solid #bdc3c7; font-size: 13px; }
+        td { padding: 10px; border-bottom: 1px solid #eee; font-size: 13px; }
+        .status-badge { padding: 5px 10px; border-radius: 20px; font-size: 10px; color: white !important; font-weight: bold; text-transform: uppercase; display: inline-block; min-width: 80px; text-align: center; }
         .bg-vermelho { background-color: #d93025 !important; }
         .bg-amarelo { background-color: #f9ab00 !important; color: #3c4043 !important; }
         .bg-verde { background-color: #1e8e3e !important; }
 
-        .action-btns { display: flex; gap: 5px; }
-        .btn-hist, .btn-vist, .btn-carimbo { border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 11px; color: white; font-weight: bold; text-decoration: none; }
+        .action-btns { display: flex; gap: 4px; }
+        .btn-hist, .btn-vist, .btn-carimbo { border: none; padding: 6px 8px; border-radius: 4px; cursor: pointer; font-size: 11px; color: white; font-weight: bold; }
         .btn-hist { background: #34495e; }
-        .btn-vist-empty { background: #95a5a6; cursor: not-allowed; }
+        .btn-vist-empty { background: #bdc3c7; cursor: not-allowed; }
         .btn-vist-filled { background: #27ae60; cursor: pointer; }
         .btn-carimbo { background: #f39c12; }
 
@@ -55,8 +55,11 @@
         <div class="filter-group"><label>DDD</label><select id="fDDD" onchange="filtrar()"><option value="">Todos</option></select></div>
         <div class="filter-group"><label>Cidade</label><select id="fCidade" onchange="filtrar()"><option value="">Todas</option></select></div>
         <div class="filter-group"><label>Site</label><input type="text" id="fSite" placeholder="Busca..." onkeyup="filtrar()"></div>
+        
+        <div class="filter-group"><label>TA Ativo</label><select id="fTA" onchange="filtrar()"><option value="">Todos</option></select></div>
+        
         <div class="filter-group">
-            <label>Criticidade (Mês Atual)</label>
+            <label>Criticidade</label>
             <select id="fCrit" onchange="filtrar()">
                 <option value="">Todas</option>
                 <option value="CRITICO">CRÍTICO (< 96,1%)</option>
@@ -64,18 +67,18 @@
             </select>
         </div>
         <div class="btn-group">
-            <button class="btn-clear" onclick="limparFiltros()">Limpar Filtros</button>
-            <button class="btn-excel" onclick="exportarExcel()">Exportar Relatório</button>
+            <button class="btn-clear" onclick="limparFiltros()">Limpar</button>
+            <button class="btn-excel" onclick="exportarExcel()">Exportar</button>
         </div>
     </div>
 
     <div class="summary">
         <div class="card card-total">
-            <span class="label-top">Sites <=96% Último Trimestre</span>
+            <span class="label-top">Total de Sites na Planilha</span>
             <span id="countTotal" class="valor">0</span>
         </div>
         <div class="card card-critico">
-            <span id="labelMesCard" class="label-top">MÊS ATUAL (<=96%)</span>
+            <span id="labelMesCard" class="label-top">MÊS ATUAL (CRÍTICOS)</span>
             <span id="countCritico" class="valor">0</span>
         </div>
     </div>
@@ -88,6 +91,7 @@
                 <th>Site</th>
                 <th id="labelMesTabela">% Mês Atual</th>
                 <th>Status</th>
+                <th>TA Ativo</th>
                 <th>Ações</th>
             </tr>
         </thead>
@@ -169,10 +173,17 @@
     function popularFiltros() {
         const ddds = [...new Set(dadosSites.map(i => i.DDD))].filter(Boolean).sort();
         const cidades = [...new Set(dadosSites.map(i => i.MUNICÍPIO || i.CIDADE))].filter(Boolean).sort();
+        
+        // Coleta TAs Ativos únicos (considerando as duas possíveis nomenclaturas de coluna)
+        const tas = [...new Set(dadosSites.map(i => i["TA ATIVO"] || i["TA"]))].filter(t => t && t !== "-" && t !== "").sort();
+
         const selDDD = document.getElementById('fDDD');
         const selCid = document.getElementById('fCidade');
+        const selTA = document.getElementById('fTA');
+
         ddds.forEach(d => selDDD.add(new Option(d, d)));
         cidades.forEach(c => selCid.add(new Option(c, c)));
+        tas.forEach(t => selTA.add(new Option(t, t)));
     }
 
     function filtrar() {
@@ -180,16 +191,22 @@
         const cid = document.getElementById('fCidade').value;
         const siteS = document.getElementById('fSite').value.toUpperCase();
         const critF = document.getElementById('fCrit').value;
+        const taF = document.getElementById('fTA').value;
 
         listaAtualParaExportar = dadosSites.filter(i => {
             const perc = parseNum(i["% " + m0] || i[m0]);
+            const taValor = i["TA ATIVO"] || i["TA"] || "-";
+
             const matchDDD = !ddd || i.DDD === ddd;
             const matchCid = !cid || (i.MUNICÍPIO === cid || i.CIDADE === cid);
             const matchSite = !siteS || (i.SITE && i.SITE.toUpperCase().includes(siteS));
+            const matchTA = !taF || taValor === taF;
+            
             let matchCrit = true;
             if(critF === "CRITICO") matchCrit = (perc < 96.1 && perc > 0);
             if(critF === "OK") matchCrit = (perc >= 96.1);
-            return matchDDD && matchCid && matchSite && matchCrit;
+
+            return matchDDD && matchCid && matchSite && matchCrit && matchTA;
         });
 
         renderizarTabela(listaAtualParaExportar);
@@ -203,8 +220,11 @@
         lista.forEach(item => {
             const percRaw = item["% " + m0] || item[m0] || "100%";
             const percNum = parseNum(percRaw);
+            const taAtivo = item["TA ATIVO"] || item["TA"] || "-";
+
             if (percNum < 96.1 && percNum > 0) contCritico++;
             let classe = percNum < 96.1 ? "bg-vermelho" : (percNum < 98 ? "bg-amarelo" : "bg-verde");
+            
             const linkVistoria = (item["VISTORIA"] || "").trim();
             const temLink = linkVistoria !== "" && linkVistoria !== "-";
             const classeVistoria = temLink ? "btn-vist-filled" : "btn-vist-empty";
@@ -216,6 +236,7 @@
                 <td><strong>${item.SITE}</strong></td>
                 <td>${percRaw}</td>
                 <td><span class="status-badge ${classe}">${percNum < 96.1 ? 'CRÍTICO' : 'OK'}</span></td>
+                <td>${taAtivo}</td>
                 <td>
                     <div class="action-btns">
                         <button class="btn-hist" onclick="abrirHistorico('${item.SITE}')">Histórico</button>
@@ -230,32 +251,29 @@
 
     function exportarExcel() {
         if (listaAtualParaExportar.length === 0) return alert("Não há dados para exportar.");
-
         const dadosRelatorio = listaAtualParaExportar.map(item => {
             const percRaw = item["% " + m0] || item[m0] || "100%";
             const percNum = parseNum(percRaw);
-            
-            // Busca o último atendimento deste site na base de causas
+            const taAtivo = item["TA ATIVO"] || item["TA"] || "-";
             const historicoSite = dadosCausas.filter(h => (h.SITE || "").toString().toUpperCase() === item.SITE.toUpperCase());
             const ultimo = historicoSite.length > 0 ? historicoSite[historicoSite.length - 1] : {};
-
             return {
                 "DDD": item.DDD || "-",
                 "Cidade": item.MUNICÍPIO || item.CIDADE || "-",
                 "Site": item.SITE,
                 "Performance Atual": percRaw,
                 "Status": percNum < 96.1 ? "CRÍTICO" : "OK",
+                "TA Ativo": taAtivo,
                 "Data Último Atend.": ultimo.DATA || "-",
                 "TA Último Atend.": ultimo["TA CAUSA"] || "-",
                 "Causa": ultimo.CAUSA || "-",
                 "Ação Realizada": ultimo["AÇÃO REALIZADA"] || "-"
             };
         });
-
         const ws = XLSX.utils.json_to_sheet(dadosRelatorio);
         const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "Relatório Consolidado");
-        XLSX.writeFile(wb, `Relatorio_Performance_${m0}.xlsx`);
+        XLSX.utils.book_append_sheet(wb, ws, "Relatório");
+        XLSX.writeFile(wb, `Relatorio_Sites_${m0}.xlsx`);
     }
 
     function abrirHistorico(siteID) {
@@ -266,10 +284,10 @@
         histBody.innerHTML = eventos.length ? '' : '<tr><td colspan="4" style="text-align:center; padding:20px">Nenhum registro encontrado.</td></tr>';
         eventos.forEach(e => {
             histBody.innerHTML += `<tr>
-                <td style="border-bottom:1px solid #eee; padding:8px">${e.DATA || '-'}</td>
-                <td style="border-bottom:1px solid #eee; padding:8px">${e["TA CAUSA"] || '-'}</td>
-                <td style="border-bottom:1px solid #eee; padding:8px">${e.CAUSA || '-'}</td>
-                <td style="border-bottom:1px solid #eee; padding:8px">${e["AÇÃO REALIZADA"] || '-'}</td>
+                <td>${e.DATA || '-'}</td>
+                <td>${e["TA CAUSA"] || '-'}</td>
+                <td>${e.CAUSA || '-'}</td>
+                <td>${e["AÇÃO REALIZADA"] || '-'}</td>
             </tr>`;
         });
         modal.style.display = "block";
