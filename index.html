@@ -9,7 +9,6 @@
         body { font-family: 'Segoe UI', Arial, sans-serif; margin: 20px; background-color: #f4f4f9; color: #333; }
         .container { max-width: 1300px; margin: auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
         
-        /* Filtros e Botões Alinhados */
         .filters { display: flex; flex-wrap: wrap; gap: 15px; margin-bottom: 25px; background: #fff; border: 1px solid #ddd; padding: 15px; border-radius: 8px; align-items: flex-end; }
         .filter-group { flex: 1; min-width: 150px; display: flex; flex-direction: column; }
         label { font-weight: bold; font-size: 13px; margin-bottom: 5px; color: #555; }
@@ -63,7 +62,7 @@
 
     <div class="summary">
         <div class="card card-total">
-            <span class="label-top">Total de Sites no Trimestre</span>
+            <span class="label-top">Sites Críticos no Trimestre</span>
             <span id="countTotal" class="valor">0</span>
         </div>
         <div class="card card-critico">
@@ -78,7 +77,7 @@
                 <th>DDD</th>
                 <th>Cidade</th>
                 <th>Site</th>
-                <th id="labelMesTabela">% Mês</th>
+                <th id="labelMesTabela">% Mês Atual</th>
                 <th>Status do Mês</th>
                 <th>Ações</th>
             </tr>
@@ -113,7 +112,7 @@
     let dadosSites = [];
     let dadosCausas = [];
     let m0 = "", m1 = "", m2 = "";
-    let listaAtualParaExportar = [];
+    let listaFiltradaTrimestre = [];
 
     function definirMeses() {
         const meses = ["JANEIRO", "FEVEREIRO", "MARÇO", "ABRIL", "MAIO", "JUNHO", "JULHO", "AGOSTO", "SETEMBRO", "OUTUBRO", "NOVEMBRO", "DEZEMBRO"];
@@ -126,7 +125,7 @@
         document.getElementById('labelMesTabela').innerText = "% " + m0;
     }
 
-    function parsePercent(val) {
+    function parseNum(val) {
         if (!val || val === "-") return 100;
         return parseFloat(val.toString().replace(',', '.').replace('%', '')) || 0;
     }
@@ -172,25 +171,27 @@
         const siteS = document.getElementById('fSite').value.toUpperCase();
         const critF = document.getElementById('fCrit').value;
 
-        listaAtualParaExportar = dadosSites.filter(i => {
-            const v0 = parsePercent(i["% " + m0] || i[m0]);
-            const v1 = parsePercent(i["% " + m1] || i[m1]);
-            const v2 = parsePercent(i["% " + m2] || i[m2]);
+        // LÓGICA: Pegar sites que falharam (<96) em QUALQUER um dos últimos 3 meses
+        listaFiltradaTrimestre = dadosSites.filter(i => {
+            const v0 = parseNum(i["% " + m0] || i[m0]);
+            const v1 = parseNum(i["% " + m1] || i[m1]);
+            const v2 = parseNum(i["% " + m2] || i[m2]);
 
-            // Critério: Foi crítico em algum dos 3 meses
-            const ehCriticoTrimestre = (v0 < 96 && v0 > 0) || (v1 < 96 && v1 > 0) || (v2 < 96 && v2 > 0);
+            // Se o site foi crítico em algum mês do trimestre (m0, m1 ou m2)
+            const falhouNoTrimestre = (v0 < 96 && v0 > 0) || (v1 < 96 && v1 > 0) || (v2 < 96 && v2 > 0);
             
-            if (!ehCriticoTrimestre) return false;
+            if (!falhouNoTrimestre) return false;
 
+            // Filtros de interface
             return (!ddd || i.DDD === ddd) && 
                    (!cid || (i.MUNICÍPIO === cid || i.CIDADE === cid)) && 
                    (!siteS || (i.SITE && i.SITE.toUpperCase().includes(siteS))) && 
                    (!critF || i["CRÍTICIDADE ATUAL"] === critF);
         });
 
-        // O Card Azul agora soma exatamente o total de sites que sobraram na tabela filtrada
-        document.getElementById('countTotal').innerText = listaAtualParaExportar.length;
-        renderizarTabela(listaAtualParaExportar);
+        // O Card Azul totaliza todos os sites únicos que entraram no filtro do trimestre
+        document.getElementById('countTotal').innerText = listaFiltradaTrimestre.length;
+        renderizarTabela(listaFiltradaTrimestre);
     }
 
     function renderizarTabela(lista) {
@@ -200,8 +201,9 @@
 
         lista.forEach(item => {
             const percRaw = item["% " + m0] || item[m0] || "0%";
-            const percNum = parsePercent(percRaw);
+            const percNum = parseNum(percRaw);
             
+            // O Card Vermelho conta apenas quem falhou no mês atual (m0)
             if (percNum < 96 && percNum > 0) contMesAtual++;
 
             let classe = percNum < 96 ? "bg-vermelho" : (percNum < 98 ? "bg-amarelo" : "bg-verde");
@@ -226,26 +228,29 @@
     }
 
     function exportarExcel() {
-        const dadosExport = listaAtualParaExportar.map(item => {
+        if(listaFiltradaTrimestre.length === 0) return alert("Sem dados para exportar.");
+        
+        const dadosExport = listaFiltradaTrimestre.map(item => {
             const hist = dadosCausas.filter(h => h.SITE === item.SITE);
             const last = hist.length > 0 ? hist[hist.length - 1] : {};
-            const perc = parsePercent(item["% " + m0] || item[m0]);
+            const perc = parseNum(item["% " + m0] || item[m0]);
             
             return {
                 "DDD": item.DDD || "-",
                 "Cidade": item.MUNICÍPIO || item.CIDADE || "-",
                 "Site": item.SITE,
-                "% Mês Atual": item["% " + m0] || item[m0] || "0%",
-                "Status do Mês": perc < 96 ? "CRÍTICO" : "OK",
-                "Data Último Histórico": last.DATA || "-",
-                "Causa Último Histórico": last.CAUSA || "-"
+                "Performance Atual": item["% " + m0] || item[m0] || "0%",
+                "Status Atual": perc < 96 ? "CRÍTICO" : "OK",
+                "Último Atendimento": last.DATA || "-",
+                "Causa": last.CAUSA || "-",
+                "Ação": last["AÇÃO REALIZADA"] || "-"
             };
         });
 
         const ws = XLSX.utils.json_to_sheet(dadosExport);
         const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "Dados");
-        XLSX.writeFile(wb, "Relatorio_Sites_Criticos.xlsx");
+        XLSX.utils.book_append_sheet(wb, ws, "Criticos_Trimestre");
+        XLSX.writeFile(wb, "Relatorio_Sites_Criticos_Trimestre.xlsx");
     }
 
     function limparFiltros() {
