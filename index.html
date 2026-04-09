@@ -2,14 +2,13 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>Painel de Gestão de Sites - BLOQUEADO</title>
+    <title>Painel de Gestão de Sites</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
         body { font-family: 'Segoe UI', Arial, sans-serif; margin: 20px; background-color: #f4f4f9; color: #333; }
         .container { max-width: 1400px; margin: auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
         
-        /* Estilos dos Filtros */
         .filters { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 25px; background: #fff; border: 1px solid #ddd; padding: 15px; border-radius: 8px; align-items: flex-end; }
         .filter-group { flex: 1; min-width: 140px; display: flex; flex-direction: column; }
         label { font-weight: bold; font-size: 12px; margin-bottom: 5px; color: #555; text-transform: uppercase; }
@@ -19,7 +18,6 @@
         .btn-clear { background-color: #6c757d; color: white; border: none; padding: 0 15px; border-radius: 4px; cursor: pointer; font-weight: bold; height: 35px; }
         .btn-excel { background-color: #27ae60; color: white; border: none; padding: 0 15px; border-radius: 4px; cursor: pointer; font-weight: bold; height: 35px; }
 
-        /* Cards de Resumo */
         .summary { display: flex; gap: 15px; margin-bottom: 25px; }
         .card { flex: 1; padding: 15px; border-radius: 8px; text-align: center; color: white; font-weight: bold; }
         .card-total { background: #1a73e8; } 
@@ -27,7 +25,6 @@
         .card span { display: block; font-size: 28px; }
         .card .label-top { font-size: 14px; text-transform: uppercase; margin-bottom: 5px; }
 
-        /* Tabela */
         table { width: 100%; border-collapse: collapse; margin-top: 10px; }
         th { background: #ecf0f1; padding: 12px; text-align: left; border-bottom: 2px solid #bdc3c7; font-size: 13px; }
         td { padding: 10px; border-bottom: 1px solid #eee; font-size: 13px; }
@@ -36,34 +33,21 @@
         .bg-amarelo { background-color: #f9ab00 !important; color: #3c4043 !important; }
         .bg-verde { background-color: #1e8e3e !important; }
 
-        /* Botões de Ação */
         .action-btns { display: flex; gap: 4px; }
         .btn-hist, .btn-vist, .btn-carimbo { border: none; padding: 6px 8px; border-radius: 4px; cursor: pointer; font-size: 11px; color: white; font-weight: bold; }
         .btn-hist { background: #34495e; }
+        .btn-vist-empty { background: #bdc3c7; cursor: not-allowed; }
+        .btn-vist-filled { background: #27ae60; cursor: pointer; }
         .btn-carimbo { background: #f39c12; }
 
-        /* Modais */
         .modal { display: none; position: fixed; z-index: 100; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); overflow-y: auto; }
         .modal-content { background: white; margin: 5% auto; padding: 25px; width: 70%; border-radius: 12px; position: relative; }
         .close-btn { position: absolute; right: 20px; top: 15px; font-size: 28px; cursor: pointer; color: #999; }
         .carimbo-box { background: #f8f9fa; border: 1px solid #ddd; padding: 20px; font-family: monospace; white-space: pre-wrap; font-size: 13px; border-radius: 5px; }
-
-        /* ESTILO DO BLOQUEIO */
-        #tela-bloqueio {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: white; z-index: 10000; display: flex;
-            flex-direction: column; justify-content: center; align-items: center;
-            font-family: sans-serif; text-align: center;
-        }
     </style>
 </head>
 <body>
 
-<div id="tela-bloqueio">
-    <div style="font-size: 60px; margin-bottom: 20px;">🔒</div>
-    <h1 style="color: #333; margin: 0;">Portal Desativado</h1>
-    <p style="color: #666; font-size: 18px; margin-top: 10px;">O acesso a este painel foi suspenso temporariamente pelo administrador.</p>
-</div>
 <div class="container">
     <h2>Análise de Performance de Sites</h2>
 
@@ -91,7 +75,7 @@
         </div>
         <div class="btn-group">
             <button class="btn-clear" onclick="limparFiltros()">Limpar</button>
-            <button class="btn-excel" onclick="exportarExcel()">Exportar Relatório</button>
+            <button class="btn-excel" onclick="exportarExcel()">Exportar</button>
         </div>
     </div>
 
@@ -135,9 +119,9 @@
     <div class="modal-content">
         <span class="close-btn" onclick="fecharModais()">&times;</span>
         <h3 id="modalTitulo">Histórico Completo</h3>
-        <table>
+        <table style="width: 100%; border-collapse: collapse; margin-top: 10px;">
             <thead style="background: #eee;">
-                <tr><th>DATA</th><th>TA</th><th>CAUSA</th><th>AÇÃO</th></tr>
+                <tr><th style="padding:10px">DATA</th><th style="padding:10px">TA</th><th style="padding:10px">CAUSA</th><th style="padding:10px">AÇÃO</th></tr>
             </thead>
             <tbody id="histBody"></tbody>
         </table>
@@ -167,12 +151,6 @@
     }
 
     function init() {
-        // Bloqueio extra via Script: Se a tela de bloqueio existir, o init não roda.
-        if(document.getElementById('tela-bloqueio')) {
-            console.warn("Portal bloqueado. Carregamento de dados interrompido.");
-            return; 
-        }
-
         definirMes();
         Papa.parse(`${urlBase}&gid=${gidPrincipal}`, {
             download: true, header: true, skipEmptyLines: true,
@@ -202,8 +180,10 @@
     function popularFiltros() {
         const ddds = [...new Set(dadosSites.map(i => i.DDD))].filter(Boolean).sort();
         const cidades = [...new Set(dadosSites.map(i => i.MUNICÍPIO || i.CIDADE))].filter(Boolean).sort();
+        
         const selDDD = document.getElementById('fDDD');
         const selCid = document.getElementById('fCidade');
+
         ddds.forEach(d => selDDD.add(new Option(d, d)));
         cidades.forEach(c => selCid.add(new Option(c, c)));
     }
@@ -223,8 +203,14 @@
             const matchDDD = !ddd || i.DDD === ddd;
             const matchCid = !cid || (i.MUNICÍPIO === cid || i.CIDADE === cid);
             const matchSite = !siteS || (i.SITE && i.SITE.toUpperCase().includes(siteS));
-            let matchTA = (taF === "SIM") ? temTA : (taF === "NAO" ? !temTA : true);
-            let matchCrit = (critF === "CRITICO") ? (perc < 96.1 && perc > 0) : (critF === "OK" ? (perc >= 96.1) : true);
+            
+            let matchTA = true;
+            if(taF === "SIM") matchTA = temTA;
+            if(taF === "NAO") matchTA = !temTA;
+            
+            let matchCrit = true;
+            if(critF === "CRITICO") matchCrit = (perc < 96.1 && perc > 0);
+            if(critF === "OK") matchCrit = (perc >= 96.1);
 
             return matchDDD && matchCid && matchSite && matchCrit && matchTA;
         });
@@ -244,6 +230,11 @@
 
             if (percNum < 96.1 && percNum > 0) contCritico++;
             let classe = percNum < 96.1 ? "bg-vermelho" : (percNum < 98 ? "bg-amarelo" : "bg-verde");
+            
+            const linkVistoria = (item["VISTORIA"] || "").trim();
+            const temLink = linkVistoria !== "" && linkVistoria !== "-";
+            const classeVistoria = temLink ? "btn-vist-filled" : "btn-vist-empty";
+            const acaoVistoria = temLink ? `onclick="window.open('${linkVistoria}', '_blank')"` : `onclick="alert('Vistoria não disponível.')"`;
 
             corpo.innerHTML += `<tr>
                 <td>${item.DDD || '-'}</td>
@@ -255,6 +246,7 @@
                 <td>
                     <div class="action-btns">
                         <button class="btn-hist" onclick="abrirHistorico('${item.SITE}')">Histórico</button>
+                        <button class="btn-vist ${classeVistoria}" ${acaoVistoria}>Vistoria</button>
                         <button class="btn-carimbo" onclick="gerarCarimbo('${item.SITE}')">Carimbo</button>
                     </div>
                 </td>
@@ -264,48 +256,62 @@
     }
 
     function exportarExcel() {
+        if (listaAtualParaExportar.length === 0) return alert("Não há dados para exportar.");
         const dadosRelatorio = listaAtualParaExportar.map(item => {
             const percRaw = item["% " + m0] || item[m0] || "100%";
+            const percNum = parseNum(percRaw);
             const taAtivo = item["TA ATIVO"] || item["TA"] || "-";
             const historicoSite = dadosCausas.filter(h => (h.SITE || "").toString().toUpperCase() === item.SITE.toUpperCase());
             const ultimo = historicoSite.length > 0 ? historicoSite[historicoSite.length - 1] : {};
             return {
-                "DDD": item.DDD, "Cidade": item.MUNICÍPIO || item.CIDADE, "Site": item.SITE,
-                "Performance": percRaw, "TA Ativo": taAtivo, "Data": ultimo.DATA || "-",
-                "Causa": ultimo.CAUSA || "-", "Ação": ultimo["AÇÃO REALIZADA"] || "-"
+                "DDD": item.DDD || "-",
+                "Cidade": item.MUNICÍPIO || item.CIDADE || "-",
+                "Site": item.SITE,
+                "Performance Atual": percRaw,
+                "Status": percNum < 96.1 ? "CRÍTICO" : "OK",
+                "TA Ativo": taAtivo,
+                "Data Último Atend.": ultimo.DATA || "-",
+                "TA Último Atend.": ultimo["TA CAUSA"] || "-",
+                "Causa": ultimo.CAUSA || "-",
+                "Ação Realizada": ultimo["AÇÃO REALIZADA"] || "-"
             };
         });
         const ws = XLSX.utils.json_to_sheet(dadosRelatorio);
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, "Relatório");
-        XLSX.writeFile(wb, `Relatorio_Portal.xlsx`);
+        XLSX.writeFile(wb, `Relatorio_Performance_${m0}.xlsx`);
     }
 
     function abrirHistorico(siteID) {
         const modal = document.getElementById('modalHistorico');
         const histBody = document.getElementById('histBody');
+        document.getElementById('modalTitulo').innerText = `Histórico: ${siteID}`;
         const eventos = dadosCausas.filter(e => (e.SITE || "").toString().toUpperCase() === siteID.toUpperCase());
-        histBody.innerHTML = eventos.length ? '' : '<tr><td colspan="4">Sem registros.</td></tr>';
+        histBody.innerHTML = eventos.length ? '' : '<tr><td colspan="4" style="text-align:center; padding:20px">Nenhum registro encontrado.</td></tr>';
         eventos.forEach(e => {
-            histBody.innerHTML += `<tr><td>${e.DATA}</td><td>${e["TA CAUSA"]}</td><td>${e.CAUSA}</td><td>${e["AÇÃO REALIZADA"]}</td></tr>`;
+            histBody.innerHTML += `<tr>
+                <td style="padding:8px; border-bottom:1px solid #eee;">${e.DATA || '-'}</td>
+                <td style="padding:8px; border-bottom:1px solid #eee;">${e["TA CAUSA"] || '-'}</td>
+                <td style="padding:8px; border-bottom:1px solid #eee;">${e.CAUSA || '-'}</td>
+                <td style="padding:8px; border-bottom:1px solid #eee;">${e["AÇÃO REALIZADA"] || '-'}</td>
+            </tr>`;
         });
         modal.style.display = "block";
     }
 
     function gerarCarimbo(siteID) {
-        const atendimentos = dadosCausas.filter(e => (e.SITE || "").toUpperCase() === siteID.toUpperCase()).slice(-3).reverse();
-        let linhas = atendimentos.map(a => `${a.DATA} | ${a["TA CAUSA"]} | ${a.CAUSA}`).join('\n');
-        document.getElementById('carimboContent').innerText = `*** BAIRRO CRÍTICO ***\n${linhas}\n\nTécnico: \nDeslocamento:`;
+        const atendimentos = dadosCausas
+            .filter(e => (e.SITE || "").toString().toUpperCase() === siteID.toUpperCase())
+            .slice(-3).reverse();
+        let linhas = atendimentos.map(a => `${a.DATA || '-'}   ${a["TA CAUSA"] || '-'}   ${a.CAUSA || '-'}   ${a["AÇÃO REALIZADA"] || '-'}`).join('\n');
+        const carimbo = `****************BAIRRO CRÍTICO***********\nDATA   TA    CAUSA    AÇÃO REALIZADA\n${linhas || 'Sem histórico.'}\n\nTécnico:\nDeslocamento:\n************************************`;
+        document.getElementById('carimboContent').innerText = carimbo;
         document.getElementById('modalCarimbo').style.display = "block";
     }
 
     function copiarCarimbo() {
         navigator.clipboard.writeText(document.getElementById('carimboContent').innerText);
-        alert("Copiado!");
-    }
-
-    function fecharModais() {
-        document.querySelectorAll('.modal').forEach(m => m.style.display = "none");
+        alert("Carimbo Copiado!");
     }
 
     function limparFiltros() {
@@ -313,6 +319,11 @@
         filtrar();
     }
 
+    function fecharModais() {
+        document.getElementById('modalCarimbo').style.display = "none";
+        document.getElementById('modalHistorico').style.display = "none";
+    }
+    
     window.onload = init;
 </script>
 </body>
